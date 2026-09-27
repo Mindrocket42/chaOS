@@ -36,12 +36,19 @@ describe('companion extension setup contract', () => {
     ]);
 
     expect(html).toMatch(/id="bridgeDownload"[\s\S]*?Download extension ZIP/i);
-    expect(html).toMatch(/Required for sub-agents/i);
-    expect(html).toMatch(/Requires the Chrome extension to be loaded and connected/i);
+    expect(html).toMatch(/Core MCP does not require this/i);
+    expect(html).toMatch(/Optional compatibility mode/i);
+    expect(html).toMatch(/browser-backed workers/i);
     expect(html).not.toContain('/releases/latest/');
     expect(ipc).not.toContain('/releases/latest/');
     expect(renderer).toContain('api.downloadExtension()');
     expect(preload).toContain("call<boolean>('bridge:downloadExtension')");
     expect(ipc).toContain("handle('bridge:downloadExtension'");
+  });
+
+  it('requires the companion only when browser-backed workers are enabled', async () => {
+    const source = await readFile(path.join(repo, 'src/shared/types.ts'), 'utf8');
+    expect(source).toContain('return config.multiAgent.enabled === true;');
+    expect(source).not.toMatch(/browserExtensionRequired[\s\S]{0,500}return true;/);
   });
 });
