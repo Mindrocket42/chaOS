@@ -79,7 +79,7 @@ Tool and session evidence is stored locally; browser conversation recording is a
 
 **Compact & Resume** asks for a handoff, starts a fresh provider conversation and rebinds that same session. Task and worker history move with it. In Settings → Continuation prompts, **Handoff prompt** controls what the brief emphasizes; the continuation marker and recovery/provenance framing remain fixed. The shipped prompt prefers a dense roughly 2,000-6,000-token brief for substantial work instead of replaying completed chronology. Automatic compaction uses configured local estimates and eligible live work; Pro models never auto-compact.
 
-**Browser-backed workers** are an optional compatibility path and start disabled. When enabled, they keep their ChatGPT conversation when they finish and require the companion to identify and coordinate their tabs. The replacement direction is exact-thread runtime adapters rather than browser-tab orchestration; see [Runtime boundary](runtime-boundary.md) and [Codex Desktop bridge](codex-desktop-bridge.md).
+**Browser-backed workers** are an optional compatibility path and start disabled. When enabled, they keep their ChatGPT conversation when they finish and require the companion to identify and coordinate their tabs. They are optional compatibility machinery, not the core product. chaOS is primarily the local capability bridge described in [Local bridge boundary](local-bridge-boundary.md).
 
 **Goal** can decide the task is complete and send nothing. **Loop** continues within the brief until disabled. Both support ChatGPT helpers or an optional API backend.
 
