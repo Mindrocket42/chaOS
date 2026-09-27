@@ -2,19 +2,30 @@
 
 ## Status
 
-Design draft only. This document deliberately adds no production tool yet.
+**Accepted architecture direction; production adapter not yet implemented.**
 
-The transport picture changed after this RFC was opened. Codex CLI 0.152.1 ships an official
-`codex queue --thread <UUID> --message ...` command against the shared local app-server. On a Mac
-running Codex Desktop, queuing to the UUID of a task already visible in Desktop delivered the next
-user turn to that exact task and the task continued there, without foreground activation or GUI
-automation.
+Core MCP is now treated as independent of the browser companion, and browser-backed worker tabs are
+a compatibility path rather than the target orchestration model. This bridge is the preferred first
+runtime adapter for replacing that coupling.
 
-That materially shrinks the original blocker: background **send to a known existing Desktop thread**
-is now proven through a supported Codex surface. The remaining integration question is narrower:
-which supported list/read/wait primitives provide bounded identity and transcript/status evidence
-for those same Desktop threads, and what host-instance guarantees should Chat On Steroids require
-before it exposes them to the model.
+Codex CLI 0.152.1 introduced the official
+`codex queue --thread <UUID> --message ...` command against the shared local app-server. A live test
+against a task already visible in Codex Desktop delivered the next user turn to that exact task and
+continued it without foreground activation or GUI automation.
+
+That proves exact-thread background send, but **queue acceptance is not sufficient delivery proof**.
+Current Codex behavior also establishes two constraints the adapter must absorb rather than leak to
+the model:
+
+- queued/injected text is delivered with user-turn authority and does not preserve an agent sender
+  identity, so `codex queue` must not be treated as a generic agent-to-agent message bus;
+- an unloaded saved thread can accept a queue item without starting a turn until the thread is
+  explicitly resumed.
+
+Therefore the production boundary remains: exact thread identity, bounded list/read/status,
+read-back after mutation, and explicit failure when the requested thread is stale, unloaded or
+cannot prove consumption. For disposable delegated work, a non-interactive `codex exec` runtime is
+a better fit than manufacturing ChatGPT browser tabs.
 
 ## Problem
 
