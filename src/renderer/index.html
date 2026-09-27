@@ -712,28 +712,27 @@
 
               <!-- 6 -->
               <!--
-                The extension is setup, not settings. It is what lets this app see which chat a
-                tool call came from, so the timeline, Compact & resume and sub-agents are all
-                dark without it — which made "buried in a settings pane behind a gear" exactly
-                the wrong place for the one-time instructions.
+                The companion is optional for Core MCP. Keep its setup visible because managed
+                ChatGPT tabs, browser-backed workers, model discovery and browser history still
+                depend on it, but do not present Chrome as a prerequisite for local tools.
               -->
               <li class="step" data-step="browser">
                 <div class="step-mark">
                   <svg class="ico tick" viewBox="0 0 24 24"><use href="#i-check" /></svg>
                 </div>
                 <div class="step-body">
-                  <h3>Add the Chrome extension</h3>
+                  <h3>Optional: add the ChatGPT browser companion</h3>
                   <ol class="setup-instructions">
                     <li>Open <code>chrome://extensions</code>.</li>
                     <li>Turn on Developer mode at the top right.</li>
                     <li>Click Open extension folder below and copy the folder path from the file manager’s address bar.</li>
                     <li>In Chrome, click Load unpacked, paste the copied folder path and select that folder.</li>
                   </ol>
-                  <p>The extension pairs with this app automatically — there is no code to type.</p>
-                  <p class="hint is-required">
-                    <strong>Required for sub-agents:</strong> the companion extension must be loaded
-                    and connected in ChatGPT. Without it, Chat On Steroids cannot identify, open or
-                    coordinate worker chats.
+                  <p>The companion pairs with this app automatically — there is no code to type.</p>
+                  <p class="hint">
+                    <strong>Core MCP does not require this.</strong> Install the companion only for
+                    CoS-managed ChatGPT tabs, browser-backed workers, model discovery, or browser
+                    conversation recording.
                   </p>
                   <div class="step-actions">
                     <button class="btn btn-solid" id="bridgeFolder" type="button">
@@ -870,8 +869,8 @@
                 <div class="pane">
                   <div class="setting">
                     <span class="setting-text">
-                      <b>Sub-agent workers</b>
-                      <em>Requires the Chrome extension to be loaded and connected. This sets the most worker chats one run may open.</em>
+                      <b>Browser-backed workers</b>
+                      <em>Optional compatibility mode. Requires the browser companion and sets the most ChatGPT worker tabs one run may open.</em>
                     </span>
                     <input id="maWorkers" class="num" type="number" min="1" max="8" step="1" />
                     <span class="unit">max</span>
