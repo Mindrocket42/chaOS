@@ -640,12 +640,12 @@ export interface MacOSDesktopAccessStatus {
 /**
  * Whether the enabled product surface currently needs the companion browser extension.
  *
- * Recording is always on and consumes browser observations, so the extension bridge is an
- * unconditional product dependency. Keep the parameter for source compatibility with callers
- * that already pass their config snapshot.
+ * Core MCP is a complete local-tool surface without browser automation. The companion becomes
+ * required only when browser-backed worker orchestration is enabled; other browser-managed
+ * features can ask for it at the point they are used instead of making startup depend on Chrome.
  */
-export function browserExtensionRequired(_config: Pick<Config, 'sessions' | 'multiAgent'> & Partial<Pick<Config, 'capabilities'>>): boolean {
-  return true;
+export function browserExtensionRequired(config: Pick<Config, 'sessions' | 'multiAgent'> & Partial<Pick<Config, 'capabilities'>>): boolean {
+  return config.multiAgent.enabled === true;
 }
 
 export interface AppState {
