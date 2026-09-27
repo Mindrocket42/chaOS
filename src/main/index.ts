@@ -1,5 +1,4 @@
 import { stopInputStartup } from './session/start-input.js';
-import { browserExtensionRequired } from '../shared/types.js';
 import { requestSessionFinishGoal, setFinishNotifier } from './session/finish.js';
 /**
  * Main process entry: window, tray, and the security posture for the renderer.
@@ -468,11 +467,10 @@ void app.whenReady().then(async () => {
   // traffic, so never make startup/reload wait behind years of old session history.
   queueDeterministicAttributionRepair();
 
-  // Recording, workers and direct browser tools share one extension transport.
-  // ipc.ts uses the same eligibility rule when settings change.
-  if (browserExtensionRequired(getConfig())) {
-    void startBridge();
-  }
+  // The loopback browser bridge may idle with no extension connected. Keeping this tiny local
+  // transport available does not make Chrome a dependency; it means an optional browser-backed
+  // feature can connect later without turning Core setup into a browser lifecycle problem.
+  void startBridge();
   if (getConfig().ui.autoConnect) void connect();
 
   // Never awaited: an unreachable GitHub, a slow download or a broken release must not delay a
