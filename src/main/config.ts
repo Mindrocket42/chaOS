@@ -174,20 +174,10 @@ const DEFAULT_MULTI_AGENT: MultiAgentSettings = {
 const ALL_FIRST_LAUNCH_CAPABILITIES: Capabilities = Object.fromEntries(
   CAPABILITIES.map((capability) => [capability, true])
 ) as Capabilities;
-// Unattributed calls start permitted on a fresh install for the same reason recording does:
-// the ambiguity fences refuse work when the extension cannot *prove* the caller, and a new
-// install is exactly where that evidence path is least likely to be healthy yet. Off, the
-// first thing a user sees is CALLER_IDENTITY_REQUIRED; on, the work runs and its activity is
-// still labelled Unattributed rather than guessed onto a chat. This relaxes only the fences —
-// a positively known dormant/retired/ended worker is refused either way. `DEFAULT_MULTI_AGENT`
-// keeps `false` so an upgrade never relaxes an older config merely because the field was
-// absent when that config was written.
-const FIRST_LAUNCH_MULTI_AGENT: MultiAgentSettings = {
-  ...DEFAULT_MULTI_AGENT,
-  enabled: true,
-  allowUnattributedCalls: true
-};
-
+// Browser-backed workers and unattributed browser calls are compatibility features, not
+// prerequisites for Core MCP. Fresh installs therefore keep the conservative multi-agent
+// defaults: no worker tabs are opened and every call requires the strongest identity evidence
+// available. A user can opt into the browser companion features explicitly.
 const rootSchema = z.object({
   name: z
     .string()
@@ -499,7 +489,7 @@ export function defaultConfig(platform: NodeJS.Platform = process.platform, rele
     ui: { minimizeToTray: true, autoConnect: false, startAtLogin: false, privacyScreenshots: false, theme: 'dark', autoRefreshPlugins: false, backgroundChats: true, browserBridgePort: 'auto', autoContinue: true },
     sessions: { ...DEFAULT_SESSIONS },
     compaction: { ...DEFAULT_COMPACTION },
-    multiAgent: { ...FIRST_LAUNCH_MULTI_AGENT },
+    multiAgent: { ...DEFAULT_MULTI_AGENT },
     goal: { ...DEFAULT_GOAL },
     mcp: { ...DEFAULT_MCP }
   };
