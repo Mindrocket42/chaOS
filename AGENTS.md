@@ -107,27 +107,26 @@ primary local bridge. Desktop and Plugins are optional capability surfaces. A se
 browser bridge exists only for browser-companion features and may idle with no extension connected.
 
 ```text
-ChatGPT model                         ChatGPT browser page
-  | MCP via public tunnel               | native UI and conversation state
-  v                                     | MAIN: fiber.js + usage.js
-Core / Desktop / Plugins                | isolated: chatgpt-dom.js + content.js
-  | secret path per surface             v
-server -> registrar -> kernel       background.js (suspending MV3 worker)
-  | live permission + caller proof      | journal, tabs, claims, ACKs
-  v                                     | paired HTTP + wake-only socket
-local files / processes / desktop       v
-or external plugin manager           bridge.ts
-  |                                     |
-  +--------- recorder / sessions / input / continuation / agents / Goal
-                                        |
-                                ipc.ts -> fixed preload API
-                                        |
-                                Electron renderer workspace
+ChatGPT
+  |
+  | MCP via configured tunnel
+  v
+Core MCP  ---------------------> approved files / processes / local evidence
+  |
+  +--> optional Desktop MCP ---> desktop / browser / clipboard capability
+  |
+  +--> optional Plugins MCP ---> external local or remote integrations
+  |
+  +--> ordinary local programs / harness CLIs when explicitly useful
+
+Optional ChatGPT/browser workspace path:
+ChatGPT browser page -> companion extension -> loopback bridge -> sessions / managed tabs / workers
 ```
 
-The extension observes ChatGPT and performs authorized browser orchestration. It never executes
-the model's local tool. The main process is authoritative about what a local tool actually did.
-The renderer has no direct filesystem, command, secret or generic main-process authority.
+Core does not depend on the browser path. The extension observes ChatGPT and performs authorized
+browser orchestration only for features that need that UI state; it never executes the model's
+local tool. The main process is authoritative about what a local tool actually did. The renderer
+has no direct filesystem, command, secret or generic main-process authority.
 
 ### Identify the boundary before debugging
 
