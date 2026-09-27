@@ -18,15 +18,15 @@
 
 <br />
 
-<h2 align="center">Code. Delegate. Keep going.</h2>
+<h2 align="center">Local tools first. Extra machinery only when it earns its keep.</h2>
 
-**Work on the real project.** Let ChatGPT read and edit files, run tests, keep terminals open and use your desktop. Follow the actual tool results as they arrive.
+**Work on the real project.** Core MCP gives ChatGPT approved local files, patches and terminals. That path does not require a browser extension.
 
-**Give it a team.** Split independent jobs across workers, then bring their results back. Workers keep their context, so the next task can pick up where they left off.
+**Keep browser automation optional.** The companion is only for features that actually depend on the ChatGPT web UI: CoS-managed tabs, browser-backed workers, model discovery and browser conversation recording.
 
-**Stay in control of long tasks.** Send a correction while work runs. Goal follows unfinished work; Loop keeps working within your brief. Compact & Resume carries the session and worker history into a fresh chat.
+**Delegate through runtimes, not tabs.** Browser-backed workers remain available as a compatibility path. The preferred replacement direction is an exact-thread runtime adapter, starting with Codex Desktop/CLI. See [Runtime boundary](docs/runtime-boundary.md) and the [Codex Desktop bridge](docs/codex-desktop-bridge.md).
 
-<p align="center"><strong>Uses your ChatGPT conversation rather than invoking Codex directly.</strong><br /><sub>ChatGPT Work and Codex share usage limits. Your account’s model availability, usage and context limits still apply. <a href="https://learn.chatgpt.com/docs/pricing">OpenAI usage details →</a></sub></p>
+<p align="center"><strong>Core MCP works without Chrome.</strong><br /><sub>The optional browser companion still automates ChatGPT.com for the legacy managed-chat workflow.</sub></p>
 
 ## Responsible use and provider rules
 
@@ -46,18 +46,18 @@ This notice states the project's intended use; it does not certify compliance or
 ## Get started
 
 1. **Install CoS** and approve your project folder in **Settings → Workspace**.
-2. **Connect Core** through **Settings → Setup** and add it in ChatGPT’s Developer mode. [Tunnel setup →](docs/setup.md#tunnel-setup)
-3. **Load the companion extension.** Click **Open extension folder**, then **Load unpacked** in Chrome’s extension settings. Pairing is automatic.
-4. **Choose a model, write your task and send.**
+2. **Connect Core** through **Settings → Setup** and add it to ChatGPT. [Tunnel setup →](docs/setup.md#tunnel-setup)
+3. **Start working in ChatGPT.** Core can read/edit approved files and run permitted commands now. No browser extension is required.
+4. **Optional:** load the browser companion only if you want CoS to drive ChatGPT.com itself, manage browser-backed worker chats, discover web UI model choices, or record browser conversations.
 
 <details>
 <summary>Requirements &amp; installation notes</summary>
 
-Windows 10/11, **macOS 13 Ventura or newer**, or a current desktop Linux. Chrome 116+, current Edge or Brave, plus a ChatGPT account/workspace with Developer mode and custom MCP apps. [Check account availability](https://help.openai.com/en/articles/12584461-developer-mode-and-mcp-apps-in-chatgpt).
+Windows 10/11, **macOS 13 Ventura or newer**, or a current desktop Linux, plus a ChatGPT account/workspace that can connect the Core MCP app. Chrome 125+, current Edge or Brave is needed only for the optional browser companion. [Check account availability](https://help.openai.com/en/articles/12584461-developer-mode-and-mcp-apps-in-chatgpt).
 
 - **Unsigned beta:** Windows is not publisher-signed; macOS is unsigned and unnotarized. Verify the package against the release checksums.
 - **Linux:** a Secret Service keyring is required. Prefer the DEB; when unprivileged user namespaces are disabled, the AppImage launcher can fall back to <code>--no-sandbox</code>.
-- **Permissions:** choose your approved folders and review capabilities before connecting. Fresh installs enable Core capabilities and two workers; Windows also enables Desktop permissions. Shell commands run with your normal user privileges.
+- **Permissions:** choose your approved folders and review capabilities before connecting. Fresh installs enable Core capabilities; browser-backed workers start disabled. Windows also enables Desktop permissions. Shell commands run with your normal user privileges.
 - **Languages:** English, German, Spanish, French, Portuguese (Portugal), Turkish, Japanese, and Simplified and Traditional Chinese. Choose one in **Appearance → Language**.
 - **After updating:** reload the companion extension and refresh the CoS apps in ChatGPT when prompted.
 
