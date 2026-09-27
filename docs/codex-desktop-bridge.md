@@ -2,30 +2,23 @@
 
 ## Status
 
-**Accepted architecture direction; production adapter not yet implemented.**
+**Optional integration experiment; not part of the core chaOS architecture.**
 
-Core MCP is now treated as independent of the browser companion, and browser-backed worker tabs are
-a compatibility path rather than the target orchestration model. This bridge is the preferred first
-runtime adapter for replacing that coupling.
+chaOS is a local capability bridge from ChatGPT to the machine. It does not need Codex to act as
+its worker runtime, and replacing browser-backed workers with Codex threads is not a product goal.
 
-Codex CLI 0.152.1 introduced the official
-`codex queue --thread <UUID> --message ...` command against the shared local app-server. A live test
-against a task already visible in Codex Desktop delivered the next user turn to that exact task and
-continued it without foreground activation or GUI automation.
+This RFC remains useful only for the narrower case where ChatGPT deliberately needs to inspect or
+continue an existing Codex Desktop task without foreground GUI automation.
 
-That proves exact-thread background send, but **queue acceptance is not sufficient delivery proof**.
-Current Codex behavior also establishes two constraints the adapter must absorb rather than leak to
-the model:
+Codex CLI has demonstrated exact-thread background send through
+`codex queue --thread <UUID> --message ...`, but current Codex behavior means that queue acceptance
+is not a consumption receipt, unloaded threads can remain pending, and injected text carries
+user-turn authority rather than peer-agent provenance. Any future implementation of this optional
+bridge must therefore own exact identity, bounded read-back and explicit failure semantics.
 
-- queued/injected text is delivered with user-turn authority and does not preserve an agent sender
-  identity, so `codex queue` must not be treated as a generic agent-to-agent message bus;
-- an unloaded saved thread can accept a queue item without starting a turn until the thread is
-  explicitly resumed.
-
-Therefore the production boundary remains: exact thread identity, bounded list/read/status,
-read-back after mutation, and explicit failure when the requested thread is stale, unloaded or
-cannot prove consumption. For disposable delegated work, a non-interactive `codex exec` runtime is
-a better fit than manufacturing ChatGPT browser tabs.
+For ordinary chaOS work, prefer Core's direct local capabilities. If a disposable coding pass is
+useful, invoke `codex exec` as an ordinary local program rather than making Codex part of the
+control plane.
 
 ## Problem
 
