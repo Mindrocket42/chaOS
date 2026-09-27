@@ -8,15 +8,22 @@ Read the [responsible-use notice and provider rules](../README.md#responsible-us
 
 ## Quick start
 
+### Core-only path (recommended)
+
 1. **Install and open CoS.** Choose the download for your operating system and CPU.
 2. **Choose what ChatGPT may access.** In **Settings → Workspace**, approve a project folder and review the tool permissions.
-3. **Connect the local tools.** Configure a tunnel in **Settings → Setup**, press **Connect**, then add the **Core** app in ChatGPT's Developer mode.
-4. **Load the companion extension.** Press **Open extension folder**. In `chrome://extensions`, enable Developer mode, choose **Load unpacked** and select that folder. Pairing is automatic.
-5. **Start a task.** Choose a project and model in CoS, write your request and send it.
+3. **Connect the local tools.** Configure a tunnel in **Settings → Setup**, press **Connect**, then add the **Core** app in ChatGPT.
+4. **Start working in ChatGPT.** Core is usable now. The browser companion is not required for files, patches, terminals or the other Core MCP tools.
 
 Want screen and keyboard control? Enable **Desktop** permissions and connect its separate app. On macOS, also grant Screen Recording and Accessibility in System Settings.
 
-**After an update:** reload the companion extension and refresh the CoS apps in ChatGPT when prompted. These are two separate steps.
+### Optional browser companion
+
+Load the companion only when you want CoS to automate the ChatGPT web UI: managed ChatGPT tabs, browser-backed workers, model discovery, Compact & Resume browser transitions, or browser conversation recording.
+
+Press **Open extension folder**. In `chrome://extensions`, enable Developer mode, choose **Load unpacked** and select that folder. Pairing is automatic.
+
+**After an update:** refresh the CoS MCP apps in ChatGPT. Reload the companion separately only if you use it.
 
 ## Tunnel setup
 
@@ -62,17 +69,17 @@ comma-separated override and port `0` remain available for isolated development/
 
 You choose the approved folders and capabilities. File tools enforce those roots; shell commands run with your normal user privileges. Desktop access applies to the desktop, and external plugins have their own permissions. **Read-only mode** disables writes, command execution and desktop control.
 
-History is stored locally, with recording on and 30-day retention by default. Credentials use the operating system's secure storage. Review permissions before connecting: fresh installs enable Core capabilities and two workers; Windows also starts with Desktop permissions enabled.
+Tool and session evidence is stored locally; browser conversation recording is available when the optional companion is connected. Credentials use the operating system's secure storage. Review permissions before connecting: fresh installs enable Core capabilities while browser-backed workers start disabled; Windows also starts with Desktop permissions enabled.
 
 [Security policy](../SECURITY.md) · [Tool reference](tool-surface.md) · [Architecture](../AGENTS.md)
 
-## Sessions, workers and Astra
+## Sessions, browser-backed workers and Astra
 
-**Session history** belongs to the local session, not a particular ChatGPT tab. The companion records messages and the actual local tool results so the app and the model can read earlier work.
+**Session history** belongs to the local session, not a particular ChatGPT tab. Core can retain local tool/session evidence without the companion; browser message capture and chat attribution are added when the companion is connected.
 
 **Compact & Resume** asks for a handoff, starts a fresh provider conversation and rebinds that same session. Task and worker history move with it. In Settings → Continuation prompts, **Handoff prompt** controls what the brief emphasizes; the continuation marker and recovery/provenance framing remain fixed. The shipped prompt prefers a dense roughly 2,000-6,000-token brief for substantial work instead of replaying completed chronology. Automatic compaction uses configured local estimates and eligible live work; Pro models never auto-compact.
 
-**Workers** keep their conversation when they finish. Send a follow-up to reuse one. The default is two simultaneous workers per family, configurable up to eight. Idle owned tabs can be reused or closed after fresh checks; the durable worker history remains. Drafts, active work and pins are protected.
+**Browser-backed workers** are an optional compatibility path and start disabled. When enabled, they keep their ChatGPT conversation when they finish and require the companion to identify and coordinate their tabs. The replacement direction is exact-thread runtime adapters rather than browser-tab orchestration; see [Runtime boundary](runtime-boundary.md) and [Codex Desktop bridge](codex-desktop-bridge.md).
 
 **Goal** can decide the task is complete and send nothing. **Loop** continues within the brief until disabled. Both support ChatGPT helpers or an optional API backend.
 
