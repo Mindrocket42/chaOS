@@ -24,7 +24,7 @@
 
 **Keep browser automation optional.** The companion is only for features that actually depend on the ChatGPT web UI: CoS-managed tabs, browser-backed workers, model discovery and browser conversation recording.
 
-**Delegate through runtimes, not tabs.** Browser-backed workers remain available as a compatibility path. The preferred replacement direction is an exact-thread runtime adapter, starting with Codex Desktop/CLI. See [Runtime boundary](docs/runtime-boundary.md) and the [Codex Desktop bridge](docs/codex-desktop-bridge.md).
+**Use the shortest local path.** chaOS is a bridge from ChatGPT to your machine, not an agent framework. Use its file, process, desktop and integration capabilities directly; invoke Codex, OpenCode or another harness CLI only when that program is useful for a particular task. See [Local bridge boundary](docs/local-bridge-boundary.md).
 
 <p align="center"><strong>Core MCP works without Chrome.</strong><br /><sub>The optional browser companion still automates ChatGPT.com for the legacy managed-chat workflow.</sub></p>
 
