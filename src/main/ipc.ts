@@ -43,7 +43,6 @@ import { app, BrowserWindow, clipboard, dialog, ipcMain, nativeTheme, shell } fr
 import { z } from 'zod';
 import {
   CAPABILITIES,
-  browserExtensionRequired,
   CHAT_BROWSERS,
   GOAL_MODES,
   GOAL_PROVIDERS,
@@ -575,10 +574,10 @@ export function registerIpc(getWindow: () => BrowserWindow | null, quitToInstall
         authorityPersistError = error instanceof Error ? error : new Error(String(error));
       }
     }
-    // Recording, workers and direct browser tools share the same extension transport.
-    // Startup and settings saves use one eligibility rule.
-    if (browserExtensionRequired(next)) await startBridge();
-    else await stopBridge();
+    // Keep the local bridge available even when no browser-backed feature is enabled. Chrome
+    // remains optional; this only preserves the loopback rendezvous so an explicitly invoked
+    // browser feature can connect without a settings-dependent transport restart.
+    await startBridge();
     if (before.capabilities.screen !== next.capabilities.screen || before.capabilities.control !== next.capabilities.control || before.readOnly !== next.readOnly) wakeBrowserWork('browser-control');
     // Permissions and the second tunnel id both decide whether the optional Desktop
     // connector should be published. Without this, enabling desktop access or pasting its
