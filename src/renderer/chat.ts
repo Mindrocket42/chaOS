@@ -3637,7 +3637,7 @@ export function chatApply(state: AppState, previous?: Config): void {
     : !bridge.running && bridge.error
       ? t("Browser bridge could not start: {0}", [bridge.error])
     : !bridge.running
-      ? t("The local bridge is off even though recording or multi-agent mode needs it.")
+      ? t("The local browser bridge is unavailable for this optional browser-backed feature.")
       : bridge.present
         ? t("Connected. Listening on 127.0.0.1:{0} · last message {1}.", [bridge.port ?? '?', ago(bridge.lastSeenAt)])
         : bridge.paired
