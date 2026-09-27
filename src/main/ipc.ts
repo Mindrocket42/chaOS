@@ -81,7 +81,6 @@ import {
   chatUrl,
   onBridgeChange,
   startBridge,
-  stopBridge,
   sweepStaleSwarm,
   unpair
 } from './bridge.js';
