@@ -469,11 +469,9 @@ describe('shipped defaults', () => {
     for (const [capability, enabled] of Object.entries(loaded.capabilities) as Array<[Capability, boolean]>) {
       expect(enabled, capability).toBe(expectedFreshCapability(capability, process.platform));
     }
-    expect(loaded.multiAgent.enabled).toBe(true);
-    expect(loaded.multiAgent.allowUnattributedCalls).toBe(true);
+    expect(loaded.multiAgent.enabled).toBe(false);
+    expect(loaded.multiAgent.allowUnattributedCalls).toBe(false);
     expect(loaded.multiAgent.recoverAgentTabs).toBe(false);
-    // Waiting for a run's own workers is a workflow preference, not a first-launch exposure
-    // decision, so it starts off even where unattributed calls start on.
     expect(loaded.multiAgent.waitForSubAgents).toBe(false);
   });
 
@@ -485,9 +483,9 @@ describe('shipped defaults', () => {
       for (const [capability, enabled] of Object.entries(config.capabilities) as Array<[Capability, boolean]>) {
         expect(enabled, `${platform}:${capability}`).toBe(expectedFreshCapability(capability, platform));
       }
-      expect(config.multiAgent.enabled).toBe(true);
+      expect(config.multiAgent.enabled).toBe(false);
       expect(config.multiAgent.maxWorkers).toBe(2);
-      expect(config.multiAgent.allowUnattributedCalls).toBe(true);
+      expect(config.multiAgent.allowUnattributedCalls).toBe(false);
       expect(config.multiAgent.recoverAgentTabs).toBe(false);
       expect(config.multiAgent.waitForSubAgents).toBe(false);
     }
@@ -543,7 +541,7 @@ describe('shipped defaults', () => {
    */
   it('keeps either unattributed choice across a save and reload', async () => {
     const config = defaultConfig();
-    expect(config.multiAgent.allowUnattributedCalls).toBe(true);
+    expect(config.multiAgent.allowUnattributedCalls).toBe(false);
 
     await saveConfig({
       ...config,
