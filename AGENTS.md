@@ -21,46 +21,40 @@ changed lines before applying an older patch. Document the work and its actual v
 the code currently does it. Known implementation gaps are collected in §21 instead of being
 mixed into the happy path as features.
 
-Source alignment: **2026-09-17**, including the 2.1.14 release candidate. App/extension **2.1.14**,
-bridge protocol **14** in the checked declarations (`package.json`, `src/main/version.ts`,
-`extension/manifest.json`). This does not prove release, installation or live Chrome behavior.
+Source alignment: **2026-09-27**. App/extension **2.1.16**, bridge protocol **14** in the checked
+declarations (`package.json`, `src/main/version.ts`, `extension/manifest.json`). This does not
+prove release, installation or live Chrome behavior.
 
 ## 1. What the whole app is meant to do
 
-Chat On Steroids is a Windows/macOS/Linux Electron workspace around ChatGPT. The user can work
-from the desktop app while ChatGPT generates answers in its own browser conversation. The app
-sends instructions, records the conversation, supplies local tools over MCP, and coordinates
-long-running work. The companion extension connects that browser conversation to the local
-session. ChatGPT still owns model execution and its native account/model availability.
+Chat On Steroids is a Windows/macOS/Linux local capability bridge for ChatGPT. Its primary job is
+to expose approved local files, processes, desktop capabilities and integrations over MCP so
+ChatGPT can do work on the user's machine that the native ChatGPT/Codex surfaces cannot reach or
+do poorly. Core MCP is useful on its own.
 
-The product should feel like one continuous workspace: choose a project, send a task, watch
-real progress, correct it while it runs, inspect what actually happened, and continue without
-losing the project, history, workers or queued instructions when a chat grows too long.
+The Electron workspace, browser companion, workers, Goal/Loop and continuation features are
+optional layers around that bridge. They may improve particular workflows, but none defines the
+core architecture and none should become a prerequisite for ordinary local file/process work.
+Codex, OpenCode and similar harnesses are ordinary local programs that chaOS may invoke when useful;
+they are downstream tools, not the chaOS control plane.
 
 ### The user's normal path
 
-1. **Set up access.** Approve folders and capabilities, configure a tunnel, connect Core in
-   ChatGPT, and load/pair the companion extension. Desktop and Plugins are optional connectors.
-   Connection, browser pairing and account model availability have separate status.
-2. **Choose where work belongs.** Add a local project folder or use an unfiled chat. A project
-   gives the session its working folder and root `AGENTS.md`; permission still comes from the
-   approved roots. Removing a project grouping keeps its chats and folder association.
-3. **Write a message.** Select an account-observed model and reasoning level, optionally attach
-   files, choose ordinary/Goal/Loop behavior, and Send. The app freezes an input in its durable
-   outbox before delivery. “Queued”, “put into the composer” and “ChatGPT accepted it” are
-   different facts and should be presented that way.
-4. **Work and steer.** The timeline combines native user/assistant messages with exact local
-   tool results. An immediate correction can join an eligible tool response. An after-turn
-   message waits for a verified completion. Native file uploads always use the browser send
-   path. The queue remains editable until its exact entry has been claimed.
-5. **Plan or automate deliberately.** A generated workflow gives the executor the whole job
-   immediately and queues later verification checkpoints. Goal continues unfinished requested
-   work and may stop. Loop keeps asking for deeper work within the same brief until switched
-   off. Astra uses its finish-tool boundary for automatic continuation.
-6. **Continue across time.** Workers sleep for reuse. Compact & Resume moves the same local
-   session from old ChatGPT chat A to new chat B. History remains readable; queued work and
-   project identity remain attached to the session. Recovery helps only work the app can still
-   prove it owes, not arbitrary old chats.
+1. **Set up local access.** Approve folders and capabilities, configure a tunnel, and connect Core
+   in ChatGPT. Desktop and Plugins are optional connectors. The browser companion is optional and
+   should be loaded only for features that actually need ChatGPT/browser UI access.
+2. **Work from ChatGPT.** Use Core MCP directly for approved filesystem, patch, search, shell and
+   retained-process work. The local bridge is complete without opening a managed browser chat.
+3. **Use the lowest capable layer.** Prefer a direct Core primitive. Invoke an installed program
+   or harness CLI only when that program adds useful capability. Do not turn ordinary local work
+   into an agent or browser workflow merely because those mechanisms exist.
+4. **Enable UI/browser capability deliberately.** Desktop control, browser-tab control, clipboard,
+   browser conversation capture and ChatGPT tab management are separate optional capabilities.
+5. **Automate only when useful.** Workers, Goal/Loop, planning and Compact & Resume are additional
+   workflow machinery for users who want them; they are not requirements for the local bridge.
+6. **Keep evidence truthful.** Tool execution, process status, browser activity and provider state
+   remain separate facts. A local command result is evidence of the local command, not proof of
+   browser/provider completion.
 
 ### Feature vocabulary — keep these distinctions
 
@@ -108,8 +102,9 @@ losing the project, history, workers or queued instructions when a chat grows to
 
 ## 2. Runtime model and identities
 
-There are four cooperating planes. Core, Desktop and Plugins are three logical MCP surfaces on
-the local MCP listener; the browser bridge is a separate loopback service with separate auth.
+There are three logical MCP surfaces on the local listener: Core, Desktop and Plugins. Core is the
+primary local bridge. Desktop and Plugins are optional capability surfaces. A separate loopback
+browser bridge exists only for browser-companion features and may idle with no extension connected.
 
 ```text
 ChatGPT model                         ChatGPT browser page
@@ -188,11 +183,11 @@ define the tool/config/wire contract. README and worklogs are secondary and can 
 | --- | --- | --- |
 | Roots | None. | Root-requiring capabilities cannot be published usefully until a root is approved. |
 | Tool capabilities | Current `defaultConfig()` starts all Core capability flags on; read-only off. | Omitted legacy flags use conservative `DEFAULT_CAPABILITIES`. Malformed existing config is conservative recovery, not fresh consent. |
-| Recording | On, 30-day retention. | Explicit Off stays Off; retention still applies to old history. |
+| Recording | On, no age-based expiry (`retainDays: 0`). | Browser conversation capture still requires the optional companion; local tool/session evidence does not make Chrome a Core dependency. |
 | Context / compaction | Advisory 400,000; limit rounded from advisory × 4/3; auto-compaction on at advisory. | Estimated local units. Automatic execution additionally requires live work, current ownership and eligible model/role. |
-| Multi-agent | On, 2 simultaneous slot-holding workers **per family**, configured hard max 8. | Legacy absent enabled/allow-unattributed fields remain false. Existing choices stay exact. |
+| Multi-agent | Off; configured worker limit remains 2 when enabled, hard max 8. | Browser-backed workers are optional compatibility machinery. Existing explicit choices stay exact. |
 | Wait for sub-agents | Off. | When on, a Goal/Loop chat's next automatic step waits for the workers that exact chat started. A chat with no run, or a run with no workers, waits either way. See §16. |
-| Unattributed allowance | True on first launch. | Relaxes ambiguity fences only; known blocked/retired/superseded ownership stays enforced. |
+| Unattributed allowance | False on first launch. | Can be enabled explicitly; known blocked/retired/superseded ownership stays enforced. |
 | Recover ordinary/agent tabs | Off. | Goal/Loop can independently justify recovery; history alone cannot. |
 | Automatic Continue | On. | Unfinished-response recovery also serves enabled Goal/Loop. This switch controls ordinary chats; explicit Off survives and malformed config disables it. See §14. |
 | Goal / Loop | Off, preferred mode Goal. Both decision backends default to ChatGPT, helper `gpt-5.6-sol` High. | API uses the configured OpenRouter/custom endpoint and stored model. These defaults are not account-availability proof. |
