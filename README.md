@@ -8,78 +8,353 @@
 
 <p align="center"><a href="https://github.com/totec448-spec/chat-on-steroids/releases/latest">All downloads</a></p>
 
-<p align="center"><sub>Independent beta. Use at your own risk and within your provider's rules. <a href="#responsible-use-and-provider-rules">Read the usage notice</a> before connecting.</sub></p>
+# chaOS / Chat On Steroids
 
-<br />
+chaOS gives ChatGPT controlled access to your local machine through MCP.
 
-<p align="center"><a href="docs/images/demo.mp4"><img src="docs/images/demo.gif" width="960" alt="Chat On Steroids in action: model selection, task plans, live tool results and reusable workers" /></a></p>
+The normal path is deliberately small:
 
-<p align="center"><a href="#get-started">Get started</a> &nbsp;·&nbsp; <a href="docs/images/demo.mp4">Watch the demo</a> &nbsp;·&nbsp; <a href="CHANGELOG.md">What’s new</a></p>
+```text
+ChatGPT
+   |
+   | MCP through one HTTPS tunnel
+   v
+chaOS Core
+   |
+   +-- approved files
+   +-- patches
+   +-- terminal / local processes
+   +-- Git
+   +-- other local capabilities you explicitly enable
+```
 
-<br />
+**You do not need the Chrome extension for ordinary local coding.**
 
-<h2 align="center">Local tools first. Extra machinery only when it earns its keep.</h2>
-
-**Work on the real project.** Core MCP gives ChatGPT approved local files, patches and terminals. That path does not require a browser extension.
-
-**Keep browser automation optional.** The companion is only for features that actually depend on the ChatGPT web UI: CoS-managed tabs, browser-backed workers, model discovery and browser conversation recording.
-
-**Use the shortest local path.** chaOS is a bridge from ChatGPT to your machine, not an agent framework. Use its file, process, desktop and integration capabilities directly; invoke Codex, OpenCode or another harness CLI only when that program is useful for a particular task. See [Local bridge boundary](docs/local-bridge-boundary.md).
-
-<p align="center"><strong>Core MCP works without Chrome.</strong><br /><sub>The optional browser companion still automates ChatGPT.com for the legacy managed-chat workflow.</sub></p>
-
-## Responsible use and provider rules
-
-Chat On Steroids is an independent, open-source workspace for coding and other authorized tasks with your own files and tools. It is intended to support productive work within the rules of the services you use. **It is not intended to bypass usage limits, account restrictions or safety controls.**
-
-Use CoS in accordance with OpenAI's applicable [Terms of Use](https://openai.com/policies/terms-of-use/) ([Europe Terms](https://openai.com/policies/eu-terms-of-use/) for the EEA, Switzerland and UK), [Usage Policies](https://openai.com/policies/usage-policies/) and [Service Terms](https://openai.com/policies/service-terms/), plus your workspace's rules and any connected service's terms.
-
-- **Respect limits and access decisions.** Workers, Goal/Loop, Compact & Resume and finish checkpoints organize work; they do not grant extra quota or model access and must not be used to evade rate limits, usage caps or account restrictions. Do not switch accounts, chats, connectors or tunnels to evade a restriction.
-- **Respect safety decisions.** Do not use local tools, browser control, plugins or another worker to carry out an action that the provider blocked for safety. A local permission or an enabled MCP connector is not permission to override a provider refusal.
-- **Understand the integration.** CoS connects local tools through MCP. Its companion also observes and automates the ChatGPT browser UI and records conversation content locally. This browser integration is not a public ChatGPT automation API. MCP availability does not establish permission for every form of browser automation or recording; OpenAI's terms also restrict automated or programmatic extraction of data or output.
-- **Use at your own risk.** Review the rules for your account and intended workflow before connecting, supervise automation and review tool actions and outputs. CoS cannot guarantee policy compliance, continued service access or protection from account warnings, restrictions or suspension. If a workflow is restricted or receives a policy warning, stop that workflow and seek clarification through the provider's support or appeal process.
-
-This notice states the project's intended use; it does not certify compliance or change provider rules. CoS is not affiliated with, endorsed by or approved by OpenAI. The software is provided as-is under the [MIT license](LICENSE); applicable statutory rights remain unaffected. See [Security](SECURITY.md) for local permissions and risks.
-
-<br />
-
-## Get started
-
-1. **Install CoS** and approve your project folder in **Settings → Workspace**.
-2. **Connect Core** through **Settings → Setup** and add it to ChatGPT. [Tunnel setup →](docs/setup.md#tunnel-setup)
-3. **Start working in ChatGPT.** Core can read/edit approved files and run permitted commands now. No browser extension is required.
-4. **Optional:** load the browser companion only if you want CoS to drive ChatGPT.com itself, manage browser-backed worker chats, discover web UI model choices, or record browser conversations.
-
-<details>
-<summary>Requirements &amp; installation notes</summary>
-
-Windows 10/11, **macOS 13 Ventura or newer**, or a current desktop Linux, plus a ChatGPT account/workspace that can connect the Core MCP app. Chrome 125+, current Edge or Brave is needed only for the optional browser companion. [Check account availability](https://help.openai.com/en/articles/12584461-developer-mode-and-mcp-apps-in-chatgpt).
-
-- **Unsigned beta:** Windows is not publisher-signed; macOS is unsigned and unnotarized. Verify the package against the release checksums.
-- **Linux:** a Secret Service keyring is required. Prefer the DEB; when unprivileged user namespaces are disabled, the AppImage launcher can fall back to <code>--no-sandbox</code>.
-- **Permissions:** choose your approved folders and review capabilities before connecting. Fresh installs enable Core capabilities; browser-backed workers start disabled. Windows also enables Desktop permissions. Shell commands run with your normal user privileges.
-- **Languages:** English, German, Spanish, French, Portuguese (Portugal), Turkish, Japanese, and Simplified and Traditional Chinese. Choose one in **Appearance → Language**.
-- **After updating:** reload the companion extension and refresh the CoS apps in ChatGPT when prompted.
-
-</details>
-
-<details>
-<summary>More screenshots</summary>
-
-![Conversation, workers and task plan](docs/images/workspace.png)
-
-![Model and reasoning selection](docs/images/model-picker.png)
-
-![Folder and capability settings](docs/images/settings.png)
-
-</details>
-
-<br />
+The browser companion is optional. Use it only if you want chaOS to automate ChatGPT.com itself, manage browser-backed worker chats, discover model choices from the web UI, or record browser conversations.
 
 ---
 
-<p align="center"><a href="docs/setup.md">Setup &amp; help</a> &nbsp;·&nbsp; <a href="docs/plugins.md">Plugins</a> &nbsp;·&nbsp; <a href="CONTRIBUTING.md">Contribute</a> &nbsp;·&nbsp; <a href="SECURITY.md">Security</a> &nbsp;·&nbsp; <a href="LICENSE">MIT license</a></p>
+## Quick start
 
-<p align="center">Built with our <a href="CONTRIBUTORS.md">community contributors</a>. Thank you to the people behind the code, designs, bug reports and testing.</p>
+### What you need
 
-<p align="center"><sub>Not affiliated with or endorsed by OpenAI. ChatGPT and Codex are OpenAI trademarks.</sub></p>
+- Windows 10/11, macOS 13+, or a current desktop Linux.
+- A ChatGPT account/workspace that supports MCP apps.
+- chaOS installed.
+- One HTTPS route from ChatGPT to the local chaOS MCP server.
+
+For most users the easiest route is **OpenAI Secure MCP Tunnel**.
+
+### 1. Install chaOS
+
+Install the appropriate release and launch it.
+
+Then open:
+
+**Settings → Workspace**
+
+Add the project folder(s) ChatGPT may access.
+
+chaOS restricts file operations to the roots you approve.
+
+### 2. Create the tunnel
+
+Open:
+
+**OpenAI Platform → Tunnels**
+
+Create a tunnel in the same OpenAI workspace you use with ChatGPT.
+
+You will get a **tunnel ID**.
+
+### 3. Create the tunnel API key
+
+Open:
+
+**OpenAI Platform → API keys**
+
+Create a **Restricted** API key with only:
+
+- **Tunnels: Read**
+- **Tunnels: Use**
+
+This key authenticates the tunnel connection. It is not an additional model API requirement for normal ChatGPT use.
+
+### 4. Connect chaOS to the tunnel
+
+In chaOS open:
+
+**Settings → Setup**
+
+Enter:
+
+- the tunnel ID;
+- the restricted API key.
+
+Press **Connect**.
+
+chaOS should show the Core MCP endpoint as connected before you continue.
+
+### 5. Add Core to ChatGPT
+
+In ChatGPT open:
+
+**Plugins → Add → Create MCP App**
+
+Choose:
+
+- **Connection:** Tunnel
+- **Tunnel:** the tunnel you created
+- **Authentication:** No authentication
+
+Name the app:
+
+```text
+Chat On Steroids Core
+```
+
+Enable the app and approve its actions.
+
+Older ChatGPT versions may require Developer mode first under **Settings → Security and login**.
+
+### 6. Verify the connection
+
+Start a normal ChatGPT conversation with the Core app enabled.
+
+Ask ChatGPT to do something harmless inside an approved folder, for example:
+
+```text
+List the files in this project root.
+```
+
+Then test a local command:
+
+```text
+Run git status in this repository.
+```
+
+If both work, the basic setup is complete.
+
+You now have:
+
+```text
+ChatGPT → tunnel → chaOS Core → local files / shell / Git
+```
+
+No Chrome extension is required for this path.
+
+---
+
+## What is mandatory and what is optional?
+
+| Component | Required for normal local coding? | Purpose |
+| --- | --- | --- |
+| **chaOS desktop app** | Yes | Hosts the local capabilities and permission boundary. |
+| **Core MCP app** | Yes | Gives ChatGPT access to files, patches, shell/process tools and local session capabilities. |
+| **HTTPS tunnel** | Yes | ChatGPT runs remotely and cannot call your localhost directly. |
+| **Tunnel API key** | Usually | Authenticates OpenAI Secure MCP Tunnel. Other tunnel methods have their own authentication. |
+| **Chrome extension / browser companion** | **No** | Only for browser-specific ChatGPT automation and browser-backed workflows. |
+| **Browser bridge** | **No** | Local communication channel used by the optional browser companion. |
+| **Desktop connector** | No | Screen, mouse, keyboard and clipboard control. |
+| **Plugins connector** | No | External MCP services such as Playwright, Blender or other custom servers. |
+| **Codex / OpenCode / other coding harness** | No | Optional local programs chaOS may invoke when useful. |
+
+The rule is simple: **use the lowest layer that can complete the task.**
+
+If Core can read the file, edit it, run the test and commit the result, do not introduce browser automation or another agent harness.
+
+See [Local bridge boundary](docs/local-bridge-boundary.md).
+
+---
+
+## Optional: browser companion
+
+Install the Chrome companion only if you specifically need one of these:
+
+- chaOS-managed ChatGPT tabs;
+- browser-backed worker chats;
+- model discovery from the ChatGPT web UI;
+- Compact & Resume browser transitions;
+- browser conversation recording.
+
+To install it:
+
+1. In chaOS press **Open extension folder**.
+2. Open `chrome://extensions`.
+3. Enable **Developer mode**.
+4. Choose **Load unpacked**.
+5. Select the folder opened by chaOS.
+
+The companion pairs with the local browser bridge automatically.
+
+If you do not need the features above, skip this entire section.
+
+---
+
+## Optional: Desktop control
+
+The separate **Desktop** connector adds:
+
+- screen inspection;
+- mouse control;
+- keyboard input;
+- clipboard access.
+
+On macOS, grant Screen Recording and Accessibility permission in System Settings.
+
+Desktop control is not required for repository work.
+
+---
+
+## Optional: external MCP plugins
+
+The **Plugins** connector is for other MCP services and integrations.
+
+Examples include Playwright, Blender, memory services, or custom local/remote MCP servers.
+
+It is not required for Core filesystem, shell or Git access.
+
+See [Plugin guide](docs/plugins.md).
+
+---
+
+## Alternative tunnels
+
+OpenAI Secure MCP Tunnel is the most direct supported setup, but chaOS can also use other HTTPS routes.
+
+### Cloudflare quick tunnel
+
+Connect the Cloudflare option in chaOS and use the public URL it displays as the MCP server URL in ChatGPT.
+
+The generated path is secret and may change after restart.
+
+### Your own HTTPS tunnel
+
+Forward a public HTTPS endpoint to the loopback MCP URL shown by chaOS.
+
+Preserve the secret path and treat the resulting URL as a credential.
+
+---
+
+## Troubleshooting
+
+### ChatGPT cannot see Core tools
+
+1. Confirm chaOS shows the tunnel as connected.
+2. Confirm **Chat On Steroids Core** is enabled in the current ChatGPT conversation.
+3. Refresh the MCP app in ChatGPT.
+4. Confirm the requested file is inside an approved Workspace root.
+
+### Tunnel rejects the API key
+
+Confirm:
+
+- the tunnel ID is correct;
+- the API key belongs to the same OpenAI workspace;
+- the key has **Tunnels: Read** and **Tunnels: Use**.
+
+The Chrome extension does not authenticate the tunnel.
+
+### File access works but commands fail
+
+Check chaOS permissions and **Read-only mode**.
+
+Shell commands run with your normal operating-system user privileges.
+
+### The README told me to install Chrome before Core worked
+
+That was the old architecture assumption.
+
+**Core does not require the browser companion.**
+
+The browser companion is now an optional compatibility/UI automation layer.
+
+### Extension pairing fails
+
+Only relevant if you chose to install the companion.
+
+Reload the unpacked extension after updating chaOS and refresh ChatGPT.
+
+The supported browser bridge ports are 8765-8769; **Auto** selects the first available port.
+
+### ChatGPT reports a tool safety refusal
+
+Do not assume the local action ran.
+
+Check chaOS local tool history for an actual request/result before retrying a potentially destructive command.
+
+---
+
+## Permissions and security
+
+You choose the approved folders and capabilities.
+
+- File tools enforce approved roots.
+- Shell commands execute as your normal OS user.
+- Desktop access applies to the desktop when enabled.
+- External plugins have their own permission models.
+- **Read-only mode** disables writes, command execution and desktop control.
+- Credentials are stored using operating-system secure storage.
+
+Review [SECURITY.md](SECURITY.md) before exposing sensitive projects.
+
+---
+
+## Browser bridge port
+
+The optional companion uses a local browser bridge.
+
+In:
+
+**Settings → Browser & history → Browser bridge port**
+
+choose **Auto** or one of:
+
+```text
+8765 8766 8767 8768 8769
+```
+
+If you are not using the browser companion, this setting is irrelevant to the normal Core MCP path.
+
+---
+
+## Development
+
+```sh
+npm ci
+npm run dev
+npm run verify
+```
+
+Build targets:
+
+```sh
+npm run dist:x64
+npm run dist:arm64
+npm run dist:mac:x64
+npm run dist:mac:arm64
+npm run dist:linux:x64
+npm run dist:linux:arm64
+```
+
+Build on the target OS.
+
+Read [AGENTS.md](AGENTS.md) before changing the app and [CONTRIBUTING.md](CONTRIBUTING.md) before contributing upstream.
+
+---
+
+## Responsible use
+
+chaOS is an independent open-source tool for authorized work with your own files and systems.
+
+It does not grant extra model quota, bypass provider restrictions, or override safety decisions. Use it within the terms and limits of ChatGPT, OpenAI and any connected service.
+
+The browser companion automates the ChatGPT web UI and can record conversation content locally. That is separate from the Core MCP path and should only be enabled when you actually need those browser-specific features.
+
+See [Security](SECURITY.md) for local permissions and risks.
+
+---
+
+[Detailed setup reference](docs/setup.md) · [Tool reference](docs/tool-surface.md) · [Local bridge boundary](docs/local-bridge-boundary.md) · [Plugins](docs/plugins.md) · [MIT license](LICENSE)
+
+Not affiliated with or endorsed by OpenAI. ChatGPT and Codex are OpenAI trademarks.
