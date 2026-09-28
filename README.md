@@ -110,7 +110,7 @@ Choose:
 Name the app:
 
 ```text
-Chat On Steroids Core
+chaOS Core
 ```
 
 Enable the app and approve its actions.
