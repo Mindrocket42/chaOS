@@ -2,6 +2,17 @@ name: Windows snapshot
 
 on:
   workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "src/**"
+      - "extension/**"
+      - "scripts/**"
+      - "package.json"
+      - "package-lock.json"
+      - "electron-builder.yml"
+      - "electron.vite.config.ts"
+      - ".github/workflows/windows-snapshot.yml"
 
 permissions:
   contents: write
