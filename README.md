@@ -1,12 +1,15 @@
 <p align="center"><img src="docs/images/readme-hero.svg?v=2" width="960" alt="Turn ChatGPT into Codex-style local coding. Chat On Steroids: Your files. Your terminal. Your ChatGPT plan." /></p>
 
 <p align="center">
-  <a href="https://github.com/totec448-spec/chat-on-steroids/releases/latest/download/Chat-On-Steroids-Setup-x64.exe"><img src="docs/images/download-windows.svg" width="208" height="56" alt="Download for Windows x64" /></a>&nbsp;
-  <a href="https://github.com/totec448-spec/chat-on-steroids/releases/latest/download/Chat-On-Steroids-macOS-arm64.dmg"><img src="docs/images/download-macos.svg" width="208" height="56" alt="Download for macOS Apple silicon" /></a>&nbsp;
-  <a href="https://github.com/totec448-spec/chat-on-steroids/releases/latest/download/Chat-On-Steroids-Linux-x64.deb"><img src="docs/images/download-linux.svg" width="208" height="56" alt="Download for Linux x64" /></a>
+  <a href="https://github.com/Mindrocket42/chaOS/releases/download/snapshot/Chat-On-Steroids-Setup-x64.exe"><img src="docs/images/download-windows.svg" width="208" height="56" alt="Download current Windows x64 snapshot" /></a>
 </p>
 
-<p align="center"><a href="https://github.com/totec448-spec/chat-on-steroids/releases/latest">All downloads</a></p>
+<p align="center">
+  <strong>Fork status:</strong> no versioned chaOS release has been published yet. The button above is the rolling Windows x64 snapshot built from <code>main</code>.
+  <br />
+  <a href="https://github.com/Mindrocket42/chaOS/actions/workflows/windows-snapshot.yml">Build/download Windows snapshot</a> ·
+  <a href="https://github.com/Mindrocket42/chaOS/actions/workflows/release.yml">Cross-platform release candidate workflow</a>
+</p>
 
 # chaOS / Chat On Steroids
 
@@ -34,7 +37,80 @@ The browser companion is optional. Use it only if you want chaOS to automate Cha
 
 ---
 
-## Quick start
+## Get chaOS running
+
+This repository is the application source. It is **not** an npm package and there is currently no versioned chaOS release in this fork.
+
+You have two practical ways to run it.
+
+### Option A — Windows installer snapshot
+
+The repository contains a GitHub Actions workflow that builds and verifies the current Windows x64 installer from `main`.
+
+1. Open **Actions → Windows snapshot**.
+2. Click **Run workflow → Run workflow**.
+3. When the build succeeds, either:
+   - download `chaOS-windows-x64-<commit>` from the workflow run; or
+   - use the rolling **Windows snapshot** release/download button at the top of this README.
+4. Run `Chat-On-Steroids-Setup-x64.exe`.
+
+The snapshot is an unsigned development build. Windows may therefore show a SmartScreen warning.
+
+### Option B — clone and run from source
+
+Prerequisites:
+
+- **Git**
+- **Node.js 22 or newer**, including npm
+- Windows 10/11, macOS 13+, or current desktop Linux
+
+Clone the repository:
+
+```sh
+git clone https://github.com/Mindrocket42/chaOS.git
+cd chaOS
+```
+
+Install the exact locked dependencies:
+
+```sh
+npm ci
+```
+
+Start chaOS:
+
+```sh
+npm run dev
+```
+
+On Windows there is also a one-click path after cloning:
+
+```text
+START-chaOS.cmd
+```
+
+Double-click that file. It checks for Node.js 22+, runs `npm ci`, and launches the Electron development app.
+
+### Build your own installer
+
+From a cloned repository with Node.js 22+:
+
+```sh
+npm ci
+npm run dist:x64
+```
+
+The Windows x64 installer is written to:
+
+```text
+release/Chat-On-Steroids-Setup-x64.exe
+```
+
+Other supported build targets are listed under [Development](#development). Build each target on its native operating system.
+
+---
+
+## Product setup
 
 ### What you need
 
