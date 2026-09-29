@@ -1,0 +1,62 @@
+name: Windows snapshot
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: windows-snapshot
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: Build Windows x64 installer
+    runs-on: windows-2025
+    timeout-minutes: 75
+
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Verify
+        run: npm run verify:ci
+
+      - name: Build installer
+        run: npm run dist:x64
+
+      - name: Upload workflow artifact
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: chaOS-windows-x64-${{ github.sha }}
+          path: release/Chat-On-Steroids-Setup-x64.exe
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Publish rolling snapshot release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag -f snapshot "$GITHUB_SHA"
+          git push origin refs/tags/snapshot --force
+
+          if gh release view snapshot >/dev/null 2>&1; then
+            gh release upload snapshot release/Chat-On-Steroids-Setup-x64.exe --clobber
+            gh release edit snapshot --title "chaOS Windows snapshot" --notes "Rolling Windows x64 installer built from main at $GITHUB_SHA. This is an unsigned development snapshot, not a versioned stable release."
+          else
+            gh release create snapshot release/Chat-On-Steroids-Setup-x64.exe --target "$GITHUB_SHA" --prerelease --title "chaOS Windows snapshot" --notes "Rolling Windows x64 installer built from main at $GITHUB_SHA. This is an unsigned development snapshot, not a versioned stable release."
+          fi
