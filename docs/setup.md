@@ -2,15 +2,17 @@
 
 [Back to the overview](../README.md)
 
+> **Fork install status:** this repository currently has no versioned chaOS release. Windows x64 users can use the rolling snapshot installer; all platforms can run from source. See [Get chaOS running](../README.md#get-chaos-running).
+
 ## Before connecting
 
-Read the [responsible-use notice and provider rules](../README.md#responsible-use-and-provider-rules). CoS is an independent beta, used at your own risk. Its companion observes and automates the ChatGPT browser UI and records conversation content locally; this is not a public ChatGPT automation API. MCP/tunnel access does not establish permission for every automated workflow. Your account's terms, usage limits, safety decisions and workspace rules still apply.
+Read the [responsible-use notice](../README.md#responsible-use). CoS is an independent beta, used at your own risk. Its companion observes and automates the ChatGPT browser UI and records conversation content locally; this is not a public ChatGPT automation API. MCP/tunnel access does not establish permission for every automated workflow. Your account's terms, usage limits, safety decisions and workspace rules still apply.
 
 ## Quick start
 
 ### Core-only path (recommended)
 
-1. **Install and open CoS.** Choose the download for your operating system and CPU.
+1. **Install and open chaOS.** On Windows x64, use the rolling snapshot installer; otherwise clone the repository and run it from source as documented in the README.
 2. **Choose what ChatGPT may access.** In **Settings → Workspace**, approve a project folder and review the tool permissions.
 3. **Connect the local tools.** Configure a tunnel in **Settings → Setup**, press **Connect**, then add the **Core** app in ChatGPT.
 4. **Start working in ChatGPT.** Core is usable now. The browser companion is not required for files, patches, terminals or the other Core MCP tools.
@@ -103,7 +105,20 @@ These continuity features do not grant additional quota or access. Do not use ne
 
 ## Build from source and contribute
 
-## Development
+### First source run
+
+Requires Git and Node.js 22 or newer.
+
+```sh
+git clone https://github.com/Mindrocket42/chaOS.git
+cd chaOS
+npm ci
+npm run dev
+```
+
+Windows users can double-click `START-chaOS.cmd` after cloning; it performs the Node/npm checks, installs locked dependencies and starts the app.
+
+### Development
 
 ```sh
 npm ci
