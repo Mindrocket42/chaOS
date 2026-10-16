@@ -3,13 +3,9 @@ name: Browser-native proof
 on:
   pull_request:
     paths:
-      - 'src/main/bootstrap.ts'
-      - 'src/main/native/**'
+      - 'native-host/**'
       - 'extension-chaos/**'
       - 'scripts/verify-chaos-native-host.mjs'
-      - 'electron.vite.config.ts'
-      - 'package.json'
-      - 'package-lock.json'
       - '.github/workflows/browser-native-proof.yml'
   workflow_dispatch:
 
@@ -23,30 +19,31 @@ concurrency:
 jobs:
   windows-proof:
     runs-on: windows-2025
-    timeout-minutes: 30
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
-        with:
-          node-version: 22
-          cache: npm
-      - name: Install dependencies
-        run: npm ci
-      - name: Unit test native protocol
-        run: npx vitest run test/native-protocol.test.ts
-      - name: Build unpacked Windows x64 app
-        run: npm run dist:dir:x64
-      - name: Exercise packaged native host using Chrome framing
-        run: node scripts/verify-chaos-native-host.mjs "release/win-unpacked/Chat On Steroids.exe"
+      - name: Show Go toolchain
+        run: go version
+      - name: Test native host
+        working-directory: native-host
+        run: go test ./...
+      - name: Build native host
+        working-directory: native-host
+        run: go build -trimpath -ldflags="-s -w" -o ../chaos-host.exe .
+      - name: Exercise native host using Chrome framing
+        run: node scripts/verify-chaos-native-host.mjs "chaos-host.exe"
       - name: Stage browser-native proof
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force browser-native-proof | Out-Null
-          Copy-Item -Recurse release/win-unpacked browser-native-proof/chaOS
+          Copy-Item chaos-host.exe browser-native-proof/chaos-host.exe
           Copy-Item -Recurse extension-chaos browser-native-proof/extension-chaos
-          Set-Content -Encoding ASCII browser-native-proof/register-host.cmd '@echo off & "%~dp0chaOS\Chat On Steroids.exe" --register-chaos-native-host & pause'
-          Set-Content -Encoding ASCII browser-native-proof/unregister-host.cmd '@echo off & "%~dp0chaOS\Chat On Steroids.exe" --unregister-chaos-native-host & pause'
+          Set-Content -Encoding ASCII browser-native-proof/register-host.cmd '@echo off & "%~dp0chaos-host.exe" --register & pause'
+          Set-Content -Encoding ASCII browser-native-proof/unregister-host.cmd '@echo off & "%~dp0chaos-host.exe" --unregister & pause'
+          Set-Content -Encoding ASCII browser-native-proof/status.cmd '@echo off & "%~dp0chaos-host.exe" --status & pause'
           @'
+          chaOS browser-native proof
+
           1. Double-click register-host.cmd.
           2. Open chrome://extensions and enable Developer mode.
           3. Choose Load unpacked and select the extension-chaos folder in this proof bundle.
@@ -58,10 +55,12 @@ jobs:
           MCP tunnel: Not used
           Native host: Running
 
-          The packaged executable has already passed the same length-prefixed stdin/stdout wire protocol Chrome Native Messaging uses.
+          This exact chaos-host.exe has already passed the same length-prefixed stdin/stdout wire protocol Chrome Native Messaging uses.
 
-          To remove local browser access, click Disconnect local bridge in the popup.
-          To remove the Chrome native-host registration entirely, double-click unregister-host.cmd.
+          The host starts with no approved folders and all local capabilities off. status.cmd shows the local configuration. Root/capability setup remains explicit and is not inferred from CoS.
+
+          To stop the live browser connection, click Disconnect local bridge in the popup.
+          To remove Chrome's native-host registration entirely, double-click unregister-host.cmd.
           '@ | Set-Content -Encoding UTF8 browser-native-proof/README.txt
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v6
         with:
