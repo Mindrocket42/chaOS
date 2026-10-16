@@ -11,5 +11,6 @@ dl div { display: grid; grid-template-columns: 105px 1fr; gap: 12px; padding: 8p
 dt { opacity: .7; }
 dd { margin: 0; overflow-wrap: anywhere; }
 .detail { min-height: 1.4em; margin: 10px 0; font-size: 12px; opacity: .78; overflow-wrap: anywhere; }
+.actions { display: grid; gap: 7px; }
 button { width: 100%; padding: 8px 10px; border: 1px solid color-mix(in srgb, CanvasText 25%, transparent); border-radius: 7px; background: ButtonFace; color: ButtonText; cursor: pointer; }
 button:disabled { opacity: .55; cursor: default; }
