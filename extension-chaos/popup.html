@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>chaOS Local Bridge</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <main>
+    <header>
+      <strong>chaOS Local Bridge</strong>
+      <span id="state" class="state">Checking…</span>
+    </header>
+
+    <dl>
+      <div><dt>Transport</dt><dd>Chrome Native Messaging</dd></div>
+      <div><dt>MCP tunnel</dt><dd>Not used</dd></div>
+      <div><dt>Native host</dt><dd id="host">Checking…</dd></div>
+    </dl>
+
+    <p id="detail" class="detail"></p>
+
+    <button id="refresh" type="button">Refresh</button>
+  </main>
+  <script src="popup.js"></script>
+</body>
+</html>
