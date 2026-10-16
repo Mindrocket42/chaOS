@@ -14,7 +14,15 @@ import {
 
 const MAX_REQUEST_BYTES = 8 * 1024 * 1024;
 const MAX_RESPONSE_BYTES = 900 * 1024;
+const MAX_SUCCESSFUL_CALLS = 512;
 const LITTLE_ENDIAN = os.endianness() === 'LE';
+
+interface SuccessfulCall {
+  signature: string;
+  response: NativeResponse;
+}
+
+const successfulCalls = new Map<string, SuccessfulCall>();
 
 function writeUint32(buffer: Buffer, value: number): void {
   if (LITTLE_ENDIAN) buffer.writeUInt32LE(value, 0);
@@ -52,6 +60,23 @@ function failure(id: string, code: string, message: string): NativeResponse {
   return { type: 'result', id, ok: false, protocol: NATIVE_PROTOCOL, error: { code, message } };
 }
 
+function callSignature(action: string, args: unknown): string {
+  try {
+    return JSON.stringify([action, args ?? null]);
+  } catch {
+    throw new NativeKernelError('BAD_ARGS', 'args must be JSON-serializable');
+  }
+}
+
+function rememberSuccessfulCall(id: string, signature: string, response: NativeResponse): void {
+  successfulCalls.set(id, { signature, response });
+  while (successfulCalls.size > MAX_SUCCESSFUL_CALLS) {
+    const oldest = successfulCalls.keys().next().value as string | undefined;
+    if (!oldest) break;
+    successfulCalls.delete(oldest);
+  }
+}
+
 async function handleRequest(value: unknown): Promise<NativeResponse> {
   if (!value || typeof value !== 'object' || Array.isArray(value)) {
     return failure('invalid', 'BAD_REQUEST', 'Native request must be an object');
@@ -72,8 +97,18 @@ async function handleRequest(value: unknown): Promise<NativeResponse> {
     return failure(id, 'BAD_REQUEST', 'Expected a call request with an action');
   }
   try {
+    const signature = callSignature(request.action, request.args);
+    const previous = successfulCalls.get(id);
+    if (previous) {
+      if (previous.signature !== signature) {
+        return failure(id, 'REQUEST_ID_REUSED', 'This successful action id was already used for different arguments');
+      }
+      return previous.response;
+    }
     const result = await runNativeAction(request.action, request.args);
-    return { type: 'result', id, ok: true, protocol: NATIVE_PROTOCOL, result };
+    const response: NativeResponse = { type: 'result', id, ok: true, protocol: NATIVE_PROTOCOL, result };
+    rememberSuccessfulCall(id, signature, response);
+    return response;
   } catch (error) {
     if (error instanceof NativeKernelError) return failure(id, error.code, error.message);
     const message = error instanceof Error ? error.message : String(error);
