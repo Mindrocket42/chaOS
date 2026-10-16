@@ -13,20 +13,32 @@ export function nativeMessagingOrigin(argv: readonly string[] = process.argv): s
   return argv.find((arg) => CHROME_EXTENSION_ORIGIN.test(arg)) ?? null;
 }
 
-const origin = nativeMessagingOrigin();
+function fail(label: string, error: unknown): void {
+  const message = error instanceof Error ? error.stack ?? error.message : String(error);
+  process.stderr.write(`${label}: ${message}\n`);
+  process.exitCode = 1;
+}
 
-if (origin) {
+const origin = nativeMessagingOrigin();
+const registerHost = process.argv.includes('--register-chaos-native-host');
+const unregisterHost = process.argv.includes('--unregister-chaos-native-host');
+
+if (registerHost || unregisterHost) {
+  void import('./native/register.js')
+    .then(({ registerNativeMessagingHost, unregisterNativeMessagingHost }) => {
+      if (registerHost) {
+        const result = registerNativeMessagingHost();
+        process.stdout.write(`chaOS Chrome native host registered.\nManifest: ${result.manifest}\nExecutable: ${result.executable}\n`);
+      } else {
+        unregisterNativeMessagingHost();
+        process.stdout.write('chaOS Chrome native host unregistered.\n');
+      }
+    })
+    .catch((error: unknown) => fail('chaOS native-host registration failed', error));
+} else if (origin) {
   void import('./native/host.js')
     .then(({ runNativeMessagingHost }) => runNativeMessagingHost(origin))
-    .catch((error: unknown) => {
-      const message = error instanceof Error ? error.stack ?? error.message : String(error);
-      process.stderr.write(`chaOS native host failed to start: ${message}\n`);
-      process.exitCode = 1;
-    });
+    .catch((error: unknown) => fail('chaOS native host failed to start', error));
 } else {
-  void import('./index.js').catch((error: unknown) => {
-    const message = error instanceof Error ? error.stack ?? error.message : String(error);
-    process.stderr.write(`chaOS desktop app failed to start: ${message}\n`);
-    process.exitCode = 1;
-  });
+  void import('./index.js').catch((error: unknown) => fail('chaOS desktop app failed to start', error));
 }
