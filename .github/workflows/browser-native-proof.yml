@@ -1,0 +1,88 @@
+name: Browser-native proof
+
+on:
+  pull_request:
+    paths:
+      - 'native-host/**'
+      - 'extension-chaos/**'
+      - 'scripts/verify-chaos-native-host.mjs'
+      - '.github/workflows/browser-native-proof.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: browser-native-proof-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  windows-proof:
+    runs-on: windows-2025
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Check extension JavaScript
+        run: |
+          node --check extension-chaos/background.js
+          node --check extension-chaos/content.js
+          node --check extension-chaos/popup.js
+      - name: Show Go toolchain
+        run: go version
+      - name: Test native host
+        working-directory: native-host
+        run: go test ./...
+      - name: Build native host
+        working-directory: native-host
+        run: go build -trimpath -ldflags="-s -w" -o ../chaos-host.exe .
+      - name: Exercise native host using Chrome framing
+        run: node scripts/verify-chaos-native-host.mjs "chaos-host.exe"
+      - name: Stage browser-native proof
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force browser-native-proof | Out-Null
+          Copy-Item chaos-host.exe browser-native-proof/chaos-host.exe
+          Copy-Item -Recurse extension-chaos browser-native-proof/extension-chaos
+          Set-Content -Encoding ASCII browser-native-proof/register-host.cmd '@echo off & "%~dp0chaos-host.exe" --register & pause'
+          Set-Content -Encoding ASCII browser-native-proof/unregister-host.cmd '@echo off & "%~dp0chaos-host.exe" --unregister & pause'
+          Set-Content -Encoding ASCII browser-native-proof/status.cmd '@echo off & "%~dp0chaos-host.exe" --status & pause'
+          Set-Content -Encoding ASCII browser-native-proof/approve-folder.cmd '@echo off & set /p N=Virtual name (example project): & set /p P=Folder path: & "%~dp0chaos-host.exe" --add-root "%N%" "%P%" & pause'
+          Set-Content -Encoding ASCII browser-native-proof/enable-read-search.cmd '@echo off & "%~dp0chaos-host.exe" --set-capability read on & "%~dp0chaos-host.exe" --set-capability search on & pause'
+          Set-Content -Encoding ASCII browser-native-proof/enable-write.cmd '@echo off & "%~dp0chaos-host.exe" --set-capability write on & pause'
+          Set-Content -Encoding ASCII browser-native-proof/enable-command.cmd '@echo off & echo WARNING: command runs with your normal Windows account access and is NOT confined to approved folders. & "%~dp0chaos-host.exe" --set-capability command on & pause'
+          Set-Content -Encoding ASCII browser-native-proof/disable-command.cmd '@echo off & "%~dp0chaos-host.exe" --set-capability command off & pause'
+          @'
+          chaOS browser-native proof
+
+          1. Double-click register-host.cmd.
+          2. Open chrome://extensions and enable Developer mode.
+          3. Choose Load unpacked and select the extension-chaos folder in this proof bundle.
+          4. Open the chaOS Local Bridge extension popup.
+
+          Expected:
+          Connected
+          Transport: Chrome Native Messaging
+          MCP tunnel: Not used
+          Native host: Running
+
+          This exact chaos-host.exe has already passed the same length-prefixed stdin/stdout wire protocol Chrome Native Messaging uses.
+
+          Local access starts CLOSED:
+          - no approved folders
+          - read off
+          - search off
+          - write off
+          - command off
+
+          approve-folder.cmd adds one explicit virtual root. enable-read-search.cmd grants read/search. Write and command have separate opt-in files. Command is intentionally called out separately because a shell process runs with your normal Windows account access and cannot honestly be described as root-confined.
+
+          In a ChatGPT browser tab, use the extension popup's Enable automatic bridge in this chat. That opt-in is tab-lifetime only; a reload disables it. The extension sends a nonce-bound transport instruction, executes only matching chaOS action envelopes, and automatically returns receipts to the same conversation. A 50-action budget prevents an unbounded automatic loop.
+
+          To stop the live browser connection, click Disconnect local bridge in the popup.
+          To remove Chrome's native-host registration entirely, double-click unregister-host.cmd.
+          '@ | Set-Content -Encoding UTF8 browser-native-proof/README.txt
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v6
+        with:
+          name: chaos-browser-native-windows-x64
+          path: browser-native-proof/
+          retention-days: 7
