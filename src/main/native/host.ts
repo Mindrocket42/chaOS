@@ -48,12 +48,14 @@ function responseBytes(response: NativeResponse): Buffer {
   return body;
 }
 
-function writeResponse(response: NativeResponse): void {
+async function writeResponse(response: NativeResponse): Promise<void> {
   const body = responseBytes(response);
   const prefix = Buffer.allocUnsafe(4);
   writeUint32(prefix, body.length);
-  process.stdout.write(prefix);
-  process.stdout.write(body);
+  const frame = Buffer.concat([prefix, body]);
+  await new Promise<void>((resolve, reject) => {
+    process.stdout.write(frame, (error) => error ? reject(error) : resolve());
+  });
 }
 
 function failure(id: string, code: string, message: string): NativeResponse {
@@ -165,10 +167,10 @@ export async function runNativeMessagingHost(origin: string): Promise<void> {
         try {
           value = JSON.parse(body.toString('utf8'));
         } catch {
-          writeResponse(failure('invalid', 'BAD_JSON', 'Request was not valid JSON'));
+          await writeResponse(failure('invalid', 'BAD_JSON', 'Request was not valid JSON'));
           return;
         }
-        writeResponse(await handleRequest(value));
+        await writeResponse(await handleRequest(value));
       }).catch((error: unknown) => {
         const message = error instanceof Error ? error.message : String(error);
         process.stderr.write(`chaOS native host request failure: ${message}\n`);
