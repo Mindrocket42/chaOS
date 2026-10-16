@@ -29,7 +29,7 @@ Want screen and keyboard control? Enable **Desktop** permissions and connect its
 4. In ChatGPT, open [Plugins](https://chatgpt.com/plugins), click **Add** at the top right and choose **Add custom MCP server**. Under **Connection** pick **Tunnel** and select your tunnel (or paste its ID), set **Authentication** to **No authentication**, tick **I understand and want to continue** and click **Create as a plugin**. Where the plugin's page in ChatGPT offers **Permissions** (not on every account type), choose **Allow all tools**; otherwise answer the first tool call's prompt with **Allow → Always allow**. ChatGPT shows these labels in your language.
 5. Name each app exactly as CoS shows it (for example `Chat On Steroids Core`). You can rename it later in ChatGPT: after its first call, CoS recognizes the app by ChatGPT's app ID, and Setup shows the new name next to the original.
 
-> **Looking for ChatGPT's Developer mode switch?** It no longer exists. Apps are created from **Plugins → Add → Add custom MCP server**, and file edits and desktop control work without it ([#522](https://github.com/totec448-spec/chat-on-steroids/issues/522)).
+> **Adding a custom MCP server:** In the current **Plugins → Add → Add custom MCP server** flow, you do not need to turn on Developer Mode first. Account and workspace permissions can still limit who may create an app. See [OpenAI's current setup guide](https://help.openai.com/en/articles/12584461-creating-custom-mcp-apps-in-chatgpt) for availability and legacy setup paths.
 
 Core, Desktop and Plugins are separate plugins in ChatGPT. Configure each surface you enable. Release packages include the pinned, checksum-verified `tunnel-client`.
 
