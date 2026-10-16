@@ -1,0 +1,57 @@
+name: Browser-native proof
+
+on:
+  pull_request:
+    paths:
+      - 'src/main/bootstrap.ts'
+      - 'src/main/native/**'
+      - 'extension-chaos/**'
+      - 'scripts/register-chaos-native-host.mjs'
+      - 'electron.vite.config.ts'
+      - 'package.json'
+      - 'package-lock.json'
+      - '.github/workflows/browser-native-proof.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: browser-native-proof-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  windows-proof:
+    runs-on: windows-2025
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Unit test native protocol
+        run: npx vitest run test/native-protocol.test.ts
+      - name: Build unpacked Windows x64 app
+        run: npm run dist:dir:x64
+      - name: Stage browser-native proof
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force browser-native-proof | Out-Null
+          Copy-Item -Recurse release/win-unpacked browser-native-proof/chaOS
+          Copy-Item -Recurse extension-chaos browser-native-proof/extension-chaos
+          Copy-Item scripts/register-chaos-native-host.mjs browser-native-proof/register-chaos-native-host.mjs
+          @'
+          Open a terminal in this folder and run:
+          node .\register-chaos-native-host.mjs --exe ".\chaOS\Chat On Steroids.exe"
+
+          Then load extension-chaos as an unpacked Chrome extension.
+          The popup must report Chrome Native Messaging and MCP tunnel: Not used.
+          '@ | Set-Content -Encoding UTF8 browser-native-proof/README.txt
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v6
+        with:
+          name: chaos-browser-native-windows-x64
+          path: browser-native-proof/
+          retention-days: 7
