@@ -7,8 +7,7 @@
   "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA4JZTf0rbQACUD/qmD186kXpOu/qqatJKhiaiXzOvN4zVP+bDj+M9KSNCSuj64++j75h+r/oqgbqFuYtVzfczRKIu7W1vYQFRqEkky3DpajP/zd3Qz/XqhJ7qTR+LicAEOBea0B5k8ib29K/uhxsCv7oYzoOj9SNAeMHj4Yg+wef1eQIuY9DkisfOsDtuzNAzPKw9dJyOFW39unfHgmWlAaaeLgjPmDyuNJTn762VeSnTM+nQTGblq4S8v26Dl71j1WXAp5siKJDw2k0Jh2cPUv+E+505+Co8zb9q6wvVa0lln3MwnMnQXXxtXbt6EWM1lYNrkZ5scUEtj7Yv9T8GcQIDAQAB",
   "permissions": [
     "activeTab",
-    "nativeMessaging",
-    "storage"
+    "nativeMessaging"
   ],
   "host_permissions": [
     "https://chatgpt.com/*",
