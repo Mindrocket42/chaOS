@@ -19,6 +19,11 @@ function fail(label: string, error: unknown): void {
   process.exitCode = 1;
 }
 
+function finishRegistration(message: string, code = 0): void {
+  const stream = code === 0 ? process.stdout : process.stderr;
+  stream.write(message, () => process.exit(code));
+}
+
 const origin = nativeMessagingOrigin();
 const registerHost = process.argv.includes('--register-chaos-native-host');
 const unregisterHost = process.argv.includes('--unregister-chaos-native-host');
@@ -28,13 +33,16 @@ if (registerHost || unregisterHost) {
     .then(({ registerNativeMessagingHost, unregisterNativeMessagingHost }) => {
       if (registerHost) {
         const result = registerNativeMessagingHost();
-        process.stdout.write(`chaOS Chrome native host registered.\nManifest: ${result.manifest}\nExecutable: ${result.executable}\n`);
+        finishRegistration(`chaOS Chrome native host registered.\nManifest: ${result.manifest}\nExecutable: ${result.executable}\n`);
       } else {
         unregisterNativeMessagingHost();
-        process.stdout.write('chaOS Chrome native host unregistered.\n');
+        finishRegistration('chaOS Chrome native host unregistered.\n');
       }
     })
-    .catch((error: unknown) => fail('chaOS native-host registration failed', error));
+    .catch((error: unknown) => {
+      const message = error instanceof Error ? error.stack ?? error.message : String(error);
+      finishRegistration(`chaOS native-host registration failed: ${message}\n`, 1);
+    });
 } else if (origin) {
   void import('./native/host.js')
     .then(({ runNativeMessagingHost }) => runNativeMessagingHost(origin))
