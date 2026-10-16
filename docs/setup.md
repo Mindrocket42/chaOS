@@ -10,7 +10,7 @@ Read the [responsible-use notice and provider rules](../README.md#responsible-us
 
 ### Install the released app
 
-For normal use, download the latest [Windows x64 installer](https://github.com/totec448-spec/chat-on-steroids/releases/latest/download/Chat-On-Steroids-Setup-x64.exe), or the [Windows ARM64 installer](https://github.com/totec448-spec/chat-on-steroids/releases/latest/download/Chat-On-Steroids-Setup-arm64.exe) for an ARM device. CoS is an unsigned beta. Download [SHA256SUMS.txt](https://github.com/totec448-spec/chat-on-steroids/releases/latest/download/SHA256SUMS.txt) from the same release and compare the installer digest with the value listed there before opening it:
+The source checkout on this page is the **Mindrocket42/chaOS fork**. Its GitHub releases page currently has no published release, so there is no verified fork-specific installer. The available installers are published by the upstream [totec448-spec/chat-on-steroids project](https://github.com/totec448-spec/chat-on-steroids/releases/latest). They install the upstream build and may not include changes that exist only in the Mindrocket42/chaOS fork. Use one only when you want the upstream release; use the source-development steps below to run this fork. CoS is an unsigned beta. Download [SHA256SUMS.txt](https://github.com/totec448-spec/chat-on-steroids/releases/latest/download/SHA256SUMS.txt) from that same upstream release and compare the installer digest with the value listed there before opening it:
 
 ```powershell
 Get-FileHash .\Chat-On-Steroids-Setup-x64.exe -Algorithm SHA256
@@ -44,7 +44,13 @@ Use the ChatGPT web app with an account or workspace allowed to add custom MCP s
 3. **Folder and Access (steps 2–3).** Share a project folder and choose what ChatGPT may do in it. You can fine-tune both later in **Settings → Workspace**.
 4. **Tunnel, API key, Connect (steps 4–6).** Create a tunnel and a restricted API key at OpenAI, paste both, and press **Connect**. The person creating the tunnel needs **Tunnels: Read + Manage**; the restricted key needs **Tunnels: Read + Use**. Details are under [Tunnel setup](#tunnel-setup).
 5. **ChatGPT (step 7).** Add the **Core** app in ChatGPT under **Plugins → Add → Add custom MCP server**, with the name and description Setup shows. Create it, then install the resulting app from your app list.
-6. **Start and check a task.** In a new ChatGPT chat, type **@**, select the Core app, then ask it to read a harmless, known file inside the shared project folder. Confirm the returned text is the expected file content and that the tool call appears in CoS **Activity**. If the app is missing, install it from your app list first.
+6. **Start a task in CoS.** Choose a project and model in CoS, write your request and send it.
+
+## First connection check
+
+After the Core app is installed in ChatGPT, open a new chat, type **@**, and select that app. Ask it to read a harmless, known file inside the shared project folder. Confirm the returned text matches the file and that the call appears in CoS **Activity**. This checks the ChatGPT-to-CoS tool connection; the separate CoS task flow remains: choose a project and model in CoS, enter the request there, and send it.
+
+If the app is missing from the **@** list, install it from your ChatGPT app list first. If the call fails, check the selected app, tunnel connection and folder/capability permissions before repeating it.
 
 Want screen and keyboard control? Enable **Desktop** permissions and connect its separate app. On macOS, also grant Screen Recording and Accessibility in System Settings.
 
