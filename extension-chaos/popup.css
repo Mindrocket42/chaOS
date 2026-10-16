@@ -1,0 +1,15 @@
+:root { color-scheme: light dark; font-family: system-ui, -apple-system, "Segoe UI", sans-serif; }
+body { margin: 0; min-width: 330px; background: Canvas; color: CanvasText; }
+main { padding: 14px; }
+header { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
+header strong { font-size: 15px; }
+.state { font-size: 12px; font-weight: 650; }
+.state.ok { color: #198754; }
+.state.bad { color: #b02a37; }
+dl { margin: 0; border-top: 1px solid color-mix(in srgb, CanvasText 16%, transparent); }
+dl div { display: grid; grid-template-columns: 105px 1fr; gap: 12px; padding: 8px 0; border-bottom: 1px solid color-mix(in srgb, CanvasText 12%, transparent); }
+dt { opacity: .7; }
+dd { margin: 0; overflow-wrap: anywhere; }
+.detail { min-height: 1.4em; margin: 10px 0; font-size: 12px; opacity: .78; overflow-wrap: anywhere; }
+button { width: 100%; padding: 8px 10px; border: 1px solid color-mix(in srgb, CanvasText 25%, transparent); border-radius: 7px; background: ButtonFace; color: ButtonText; cursor: pointer; }
+button:disabled { opacity: .55; cursor: default; }
