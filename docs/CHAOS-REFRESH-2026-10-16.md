@@ -4,31 +4,37 @@
 
 Rebase chaOS on the current Chat On Steroids core, keep the useful local capability plumbing, and remove the product machinery that turns a local bridge into a second ChatGPT runtime.
 
-The target is deliberately small:
+The primary target is deliberately small:
 
 ```text
-ChatGPT
-   |
-   | one MCP connection boundary
-   v
-chaOS Core
-   |
-   +-- files / search / patch
-   +-- shell / retained processes
-   +-- git
-   +-- optional desktop control
-   +-- optional local harness launch (Codex / OpenCode / Claude Code / other CLI)
+ChatGPT in Chrome
+       |
+       | explicit chaOS action/result envelope
+       v
+chaOS extension
+       |
+       | Chrome Native Messaging
+       v
+chaOS capability kernel
+       |
+       +-- files / search / patch
+       +-- shell / retained processes
+       +-- git
+       +-- optional desktop control
+       +-- optional local harness launch (Codex / OpenCode / Claude Code / other CLI)
 ```
 
 ChatGPT is the orchestrator. chaOS is the executor and evidence boundary.
 
+MCP remains an optional compatibility transport. chaOS does not depend on it.
+
 ## Non-negotiable architecture rules
 
-1. **MCP is a wire protocol, not an operating system.** No orchestration policy, worker lifecycle, conversation lifecycle, or durable reasoning state belongs in MCP.
-2. **One normal connection.** Core is the only required ChatGPT plugin/surface. Desktop tools, if enabled, are published through Core rather than requiring a second tunnel. External local tools are invoked downstream by Core rather than republished as additional ChatGPT-facing tunnels unless there is a demonstrated need.
-3. **The tunnel is owned by chaOS.** It is a child process of chaOS, not ambient machine state. If chaOS stops, its tunnel stops.
-4. **Transport state must be observable.** The UI and diagnostics must show: transport kind, executable path, PID, running/stopped, tunnel id, local MCP endpoint, last successful control-plane handshake, last request from ChatGPT, last tool call, and last exit/error. Start / Stop / Restart must be explicit controls.
-5. **Browser automation is not part of the normal path.** No Chrome/Firefox extension is required for files, shell, Git, desktop control, or local harness execution.
+1. **MCP is optional transport, not architecture.** No orchestration policy, worker lifecycle, conversation lifecycle, capability implementation or durable reasoning state may depend on MCP.
+2. **Browser-native is the primary local path.** Chrome Native Messaging carries extension-to-host traffic directly. It needs no localhost HTTP server, tunnel id, tunnel-client, public endpoint or ChatGPT connector registration.
+3. **One capability kernel.** Browser-native and any retained MCP compatibility adapter call the same local capability layer. Transports do not implement filesystem/process policy independently.
+4. **Transport ownership must be obvious.** In browser-native mode Chrome owns the native messaging pipe and launches the chaOS host. Disabling/removing the extension removes that browser path. In MCP compatibility mode chaOS owns any tunnel child process and exposes its PID/path/state.
+5. **Browser automation is not orchestration.** The extension may carry explicit action/result envelopes between the current ChatGPT conversation and the native host. It must not grow workers, tab schedulers, model-selection automation, Goal/Loop, conversation recovery machinery or a second agent runtime.
 6. **No local agent framework.** No browser-backed workers, Goal, Loop, swarm, worker retirement, worker chat archival, automatic Continue, or chat-tab lifecycle as a dependency of local work.
 7. **No hidden persistence requirement.** Session recording is opt-in. Local execution does not depend on recording ChatGPT conversations.
 8. **Durable work state belongs in the workspace.** For long work, ChatGPT writes objective, plan, findings, decisions and receipts to project files. Conversation history is not the source of truth.
@@ -37,28 +43,26 @@ ChatGPT is the orchestrator. chaOS is the executor and evidence boundary.
 
 ## What to keep from current CoS
 
-- Core MCP tool implementations and schemas that directly expose useful local capability.
 - Approved-root filesystem boundary.
-- Search / patch / file inspection.
+- Search / patch / file inspection implementations.
 - Shell and retained-process support.
 - Git support.
-- OpenAI Secure MCP Tunnel adapter and generic HTTPS/manual adapter as transport options.
-- Tunnel health probing, proxy support and route-settle fixes.
+- Child-process environment hardening and process-tree cleanup.
 - Diagnostics that report real state rather than inferred state.
 - Installer/packaging/test hardening.
-- Optional native desktop control, but folded into the Core surface.
-- Optional local-control API only if it remains loopback-only and off by default.
+- Optional native desktop control.
+- OpenAI Secure MCP Tunnel and generic HTTPS/manual adapters only as compatibility transports while useful.
 
 ## What to sideline or remove from the normal product
 
-- Browser companion requirement.
+- Browser companion as a conversation recorder/control plane.
 - Built-in ChatGPT browser as an execution dependency.
 - Browser-backed workers / multi-agent ChatGPT tabs.
 - Goal and Loop.
 - Automatic Continue / fresh-turn rotation machinery.
 - Compact & Resume automation as a product dependency.
 - Automatic plugin-refresh clicks in the ChatGPT UI.
-- ChatGPT DOM/error-string automation and recovery loops.
+- ChatGPT DOM/error-string recovery loops.
 - Session recording as an invariant.
 - Local scraping of Codex/Claude usage logs.
 - Desktop pets and unrelated UI/product extras.
@@ -67,38 +71,67 @@ ChatGPT is the orchestrator. chaOS is the executor and evidence boundary.
 
 ## Minimal orchestration model
 
-ChatGPT already provides the reasoning/orchestration loop. chaOS only needs deterministic tools and durable process handles.
+ChatGPT already provides the reasoning/orchestration loop. chaOS only needs deterministic capabilities and durable process handles.
 
-Minimum useful tool families:
+Minimum useful action families:
 
 ```text
-fs.read / fs.search / fs.patch / fs.list
-proc.run / proc.status / proc.read / proc.stop
-git.status / git.diff / git.commit
-computer.screenshot / computer.input       # optional
-harness.run / harness.status / harness.stop # optional thin wrappers
+health
+fs.list / fs.read / fs.search / fs.write / fs.replace
+proc.run / proc.read / proc.write / proc.stop
+git.status / git.diff / git.commit                 # may initially be shell-backed
+computer.screenshot / computer.input               # optional
+harness.run / harness.status / harness.stop         # optional thin wrappers
 ```
 
 A long-running task is therefore:
 
 ```text
 ChatGPT decides next action
-  -> calls chaOS tool
+  -> emits one chaOS action
+  -> extension hands it to native host
   -> chaOS executes and returns receipt
+  -> receipt returns to ChatGPT
   -> ChatGPT decides next action
 ```
 
 Parallel work is just multiple retained process or harness handles. It does not require worker chats, browser tabs, a swarm scheduler or a second model pretending to be the user.
 
-## Tunnel contract
+## Browser-native transport contract
 
-The current OpenAI product cannot call a developer-machine localhost MCP server directly. A remote HTTPS endpoint or Secure MCP Tunnel is therefore required for ordinary ChatGPT-to-local-tool access. The tunnel is transport only.
+Browser mode has no MCP server and no Secure MCP Tunnel:
 
-chaOS must make that transport boring and explicit:
+```text
+ChatGPT tab
+   -> chaOS content bridge
+   -> extension service worker
+   -> chrome.runtime.connectNative("pro.ironhead.chaos")
+   -> chaOS packaged executable in native-host mode
+   -> capability kernel
+```
+
+The extension popup must answer the operational question directly:
+
+```text
+chaOS Local Bridge
+Connected
+
+Transport:   Chrome Native Messaging
+MCP tunnel:  Not used
+Native host: Running
+```
+
+No hidden local port exists in this mode.
+
+The first browser proof uses explicit user-approved action controls in the ChatGPT page. Full automatic result hand-back is a later transport refinement; it must remain a tiny shim, not become a DOM-driven agent framework.
+
+## MCP compatibility contract
+
+If MCP is retained, it is just another adapter over the same capability kernel.
 
 ```text
 [STOPPED]
-Start connection
+Start MCP compatibility transport
 
 [RUNNING]
 Transport: OpenAI Secure MCP Tunnel
@@ -112,38 +145,41 @@ Last tool call: 12:41:20
 [Stop] [Restart] [Open diagnostics]
 ```
 
-There must be no question of "where is MCP?" The answer must always be visible: **the MCP server is inside chaOS; the tunnel-client is a child process owned by chaOS; this is its PID/path/state.**
+There must be no question of "where is MCP?" If compatibility mode is on, chaOS identifies every owned component. If it is off, no chaOS-owned MCP/tunnel process exists.
 
 ## Initial default posture
 
-Fresh install:
+Fresh install target:
 
-- Core file/search/patch/process/Git capabilities: available once a workspace root is approved.
-- Desktop: off.
-- Browser companion: off / not required.
-- Multi-agent workers: off.
-- Goal / Loop: off.
-- Automatic Continue / turn rotation: off.
-- Session recording: off.
-- Usage-log harvesting: off.
-- Local control API: off.
-- Tunnel auto-connect: off until configured; once configured, one explicit Connect controls the owned child process.
+- Browser-native transport preferred.
+- Approved roots empty until the user selects them.
+- Core filesystem/process capabilities unavailable until explicitly granted.
+- Desktop off.
+- MCP compatibility transport off.
+- Browser worker machinery off.
+- Multi-agent workers off.
+- Goal / Loop off.
+- Automatic Continue / turn rotation off.
+- Session recording off.
+- Usage-log harvesting off.
+- Local control API off.
 
 ## Acceptance tests
 
-1. With no browser extension installed, ChatGPT can list/read/patch an approved project, run a test and inspect Git status.
-2. Killing chaOS kills the tunnel child; no chaOS-owned tunnel-client remains.
-3. The app shows the tunnel executable path and PID while running.
-4. One button stops the local server/tunnel path; one button starts it.
-5. No second Desktop or Plugins tunnel is required for ordinary use.
-6. A fresh install does not open or manipulate ChatGPT browser tabs.
-7. A fresh install does not record conversations.
-8. A fresh install does not start workers, Goal, Loop, background chats or usage harvesting.
-9. ChatGPT can start two independent local harness jobs and poll both through process/job handles without browser workers.
-10. All core tests and packaged Windows smoke tests pass.
+1. With no ChatGPT MCP connector and no tunnel-client running, the Chrome extension can ping the chaOS native host.
+2. Through browser-native mode, an approved action can list/read/search an approved root and run a retained process.
+3. The extension popup explicitly reports `Chrome Native Messaging` and `MCP tunnel: Not used`.
+4. Native-host mode does not acquire the normal desktop app single-instance lock, create windows, start tunnels or start browser-worker machinery.
+5. Closing the native messaging connection terminates the native-host process and any child processes it owns.
+6. No second Desktop or Plugins tunnel is required for browser-native use.
+7. A fresh install does not open or manipulate ChatGPT browser tabs by itself.
+8. A fresh install does not record conversations or start workers, Goal, Loop, background chats or usage harvesting.
+9. ChatGPT can start two independent local process/harness jobs and poll both through handles without browser workers.
+10. MCP compatibility mode can be disabled without disabling the local capability kernel.
+11. All core tests and packaged Windows smoke tests pass.
 
 ## Repository state
 
 - Previous chaOS state is preserved on `archive/chaos-core-first-2026-09-29`.
 - `main` was reset to the current upstream CoS head (`8c3b9611d8c0f1a9fe54fbff883e003269160b50`) on 2026-10-16.
-- This work proceeds on `chaos-core-first-refresh`.
+- `chaos-core-first-refresh` contains the browser-native prototype and remains a draft until the vertical slice is built and exercised.
