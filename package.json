@@ -19,6 +19,8 @@
     "verify:privacy": "node scripts/verify-public-history.mjs",
     "verify:ui": "node scripts/verify-ui.mjs",
     "verify:tunnel-current": "node scripts/verify-current-tunnel.mjs",
+    "native:register": "node scripts/register-chaos-native-host.mjs",
+    "native:unregister": "node scripts/register-chaos-native-host.mjs --unregister",
     "hooks:install": "node scripts/install-git-hooks.mjs",
     "icon": "node scripts/make-icon.mjs",
     "extension:firefox:stage": "node scripts/stage-firefox-extension.mjs",
