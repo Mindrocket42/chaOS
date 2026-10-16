@@ -13,6 +13,8 @@ ChatGPT in Chrome
 
 It does **not** use an OpenAI Secure MCP Tunnel, `tunnel-client`, a localhost HTTP port, or a ChatGPT custom connector.
 
+The extension itself asks only for ChatGPT host access plus Chrome Native Messaging. It does not request debugger, tabs, tab-group, cookies, broad web-host or localhost permissions.
+
 ## Current proof slice
 
 The current content bridge deliberately requires a user click for each detected `CHAOS_ACTION_BEGIN` action. The result is displayed beside the assistant message and can be copied back into the conversation. This proves the browser-to-native capability path without making ChatGPT DOM automation part of the local security boundary.
