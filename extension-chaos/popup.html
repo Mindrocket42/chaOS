@@ -17,14 +17,17 @@
       <div><dt>Transport</dt><dd>Chrome Native Messaging</dd></div>
       <div><dt>MCP tunnel</dt><dd>Not used</dd></div>
       <div><dt>Native host</dt><dd id="host">Checking…</dd></div>
+      <div><dt>This chat</dt><dd id="chat-state">Manual</dd></div>
     </dl>
 
     <p id="detail" class="detail"></p>
 
     <div class="actions">
-      <button id="refresh" type="button">Connect / refresh</button>
+      <button id="enable-chat" type="button">Enable automatic bridge in this chat</button>
+      <button id="disable-chat" type="button">Disable automatic bridge in this chat</button>
+      <button id="refresh" type="button">Connect / refresh host</button>
       <button id="disconnect" type="button">Disconnect local bridge</button>
-      <button id="copy" type="button">Copy ChatGPT bridge instructions</button>
+      <button id="copy" type="button">Copy manual bridge instructions</button>
     </div>
     <p id="copy-status" class="detail"></p>
   </main>
