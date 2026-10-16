@@ -6,14 +6,45 @@
 
 Read the [responsible-use notice and provider rules](../README.md#responsible-use-and-provider-rules). CoS is an independent beta, used at your own risk. Its browser extension observes and automates the ChatGPT browser UI and records conversation content locally; this is not a public ChatGPT automation API. MCP/tunnel access does not establish permission for every automated workflow. Your account's terms, usage limits, safety decisions and workspace rules still apply.
 
+## Windows 10/11: install or run from source
+
+### Install the released app
+
+For normal use, download the latest [Windows x64 installer](https://github.com/totec448-spec/chat-on-steroids/releases/latest/download/Chat-On-Steroids-Setup-x64.exe), or the [Windows ARM64 installer](https://github.com/totec448-spec/chat-on-steroids/releases/latest/download/Chat-On-Steroids-Setup-arm64.exe) for an ARM device. CoS is an unsigned beta. Download [SHA256SUMS.txt](https://github.com/totec448-spec/chat-on-steroids/releases/latest/download/SHA256SUMS.txt) from the same release and compare the installer digest with the value listed there before opening it:
+
+```powershell
+Get-FileHash .\Chat-On-Steroids-Setup-x64.exe -Algorithm SHA256
+```
+
+Use the ARM64 filename in the command if you downloaded that installer. Open the verified installer, start CoS, and continue with **Settings → Setup** below.
+
+### Run the source checkout
+
+For development, install Git and Node.js 22 or newer. In PowerShell, run these commands from the folder where you want the checkout:
+
+```powershell
+git clone https://github.com/Mindrocket42/chaOS.git
+Set-Location chaOS
+node --version
+npm ci
+npm run verify
+npm run dev
+```
+
+Check that `node --version` reports version 22 or newer. `npm run verify` runs the repository verification gate; `npm run dev` starts the Electron development app. See [Contributing → Development setup](../CONTRIBUTING.md#development-setup) for Linux Nix details and packaging commands.
+
+### Access you need
+
+Use the ChatGPT web app with an account or workspace allowed to add custom MCP servers. Creating an OpenAI Secure MCP Tunnel requires **Tunnels: Read + Manage** on the Platform operator. The restricted key entered in CoS needs **Tunnels: Read + Use**. ChatGPT workspace permissions separately control who may add the app. Ask the relevant workspace or Platform administrator if these controls are unavailable. See OpenAI's [Secure MCP Tunnel guide](https://developers.openai.com/api/docs/guides/secure-mcp-tunnels) and [custom MCP server guide](https://developers.openai.com/api/docs/guides/custom-mcp-server).
+
 ## Quick start
 
 1. **Install and open CoS.** Choose the download for your operating system and CPU, then open **Settings → Setup**. The steps below are Setup's own, in its order.
 2. **Browser (step 1).** Load the browser extension: open your browser's extensions page (`chrome://extensions`, `edge://extensions` or `brave://extensions`; Setup copies the address for you, because browsers only open these pages from their own address bar). Turn on **Developer mode** (in Edge, at the bottom of the left sidebar), click **Load unpacked** and select the folder that **Open extension folder** shows. Pairing is automatic. Then choose where ChatGPT runs and sign in.
 3. **Folder and Access (steps 2–3).** Share a project folder and choose what ChatGPT may do in it. You can fine-tune both later in **Settings → Workspace**.
-4. **Tunnel, API key, Connect (steps 4–6).** Create a tunnel and a restricted API key at OpenAI, paste both, and press **Connect**. Details are under [Tunnel setup](#tunnel-setup).
-5. **ChatGPT (step 7).** Add the **Core** app in ChatGPT under **Plugins → Add → Add custom MCP server**, with the name and description Setup shows.
-6. **Start a task.** Choose a project and model in CoS, write your request and send it.
+4. **Tunnel, API key, Connect (steps 4–6).** Create a tunnel and a restricted API key at OpenAI, paste both, and press **Connect**. The person creating the tunnel needs **Tunnels: Read + Manage**; the restricted key needs **Tunnels: Read + Use**. Details are under [Tunnel setup](#tunnel-setup).
+5. **ChatGPT (step 7).** Add the **Core** app in ChatGPT under **Plugins → Add → Add custom MCP server**, with the name and description Setup shows. Create it, then install the resulting app from your app list.
+6. **Start and check a task.** In a new ChatGPT chat, type **@**, select the Core app, then ask it to read a harmless, known file inside the shared project folder. Confirm the returned text is the expected file content and that the tool call appears in CoS **Activity**. If the app is missing, install it from your app list first.
 
 Want screen and keyboard control? Enable **Desktop** permissions and connect its separate app. On macOS, also grant Screen Recording and Accessibility in System Settings.
 
@@ -23,13 +54,13 @@ Want screen and keyboard control? Enable **Desktop** permissions and connect its
 
 ### OpenAI Secure MCP Tunnel
 
-1. Create a tunnel in [Platform → Tunnels](https://platform.openai.com/settings/organization/tunnels), in the same workspace you use in ChatGPT.
-2. Create a **Restricted** [API key](https://platform.openai.com/settings/organization/api-keys) with **Tunnels: Read** and **Tunnels: Use**.
+1. Create a tunnel in [Platform → Tunnels](https://platform.openai.com/settings/organization/tunnels), in the same workspace you use in ChatGPT. The person creating it needs **Tunnels: Read + Manage**.
+2. Create a **Restricted** [API key](https://platform.openai.com/settings/organization/api-keys) with **Tunnels: Read** and **Tunnels: Use**. The key CoS uses needs these runtime permissions; it does not need Manage.
 3. Enter the tunnel ID and key in CoS and press **Connect**.
-4. In ChatGPT, open [Plugins](https://chatgpt.com/plugins), click **Add** at the top right and choose **Add custom MCP server**. Under **Connection** pick **Tunnel** and select your tunnel (or paste its ID), set **Authentication** to **No authentication**, tick **I understand and want to continue** and click **Create as a plugin**. Where the plugin's page in ChatGPT offers **Permissions** (not on every account type), choose **Allow all tools**; otherwise answer the first tool call's prompt with **Allow → Always allow**. ChatGPT shows these labels in your language.
+4. In ChatGPT, open [Plugins](https://chatgpt.com/plugins), click **Add** at the top right and choose **Add custom MCP server**. Under **Connection** pick **Tunnel** and select your tunnel (or paste its ID), set **Authentication** to **No authentication**, tick **I understand and want to continue** and click **Create as a plugin**. Then install the app from your app list; in a new chat, type **@** and select it to invoke its tools. Where the plugin's page in ChatGPT offers **Permissions** (not on every account type), choose **Allow all tools**; otherwise answer the first tool call's prompt with **Allow → Always allow**. ChatGPT shows these labels in your language.
 5. Name each app exactly as CoS shows it (for example `Chat On Steroids Core`). You can rename it later in ChatGPT: after its first call, CoS recognizes the app by ChatGPT's app ID, and Setup shows the new name next to the original.
 
-> **Adding a custom MCP server:** In the current **Plugins → Add → Add custom MCP server** flow, you do not need to turn on Developer Mode first. Account and workspace permissions can still limit who may create an app. See [OpenAI's current setup guide](https://help.openai.com/en/articles/12584461-creating-custom-mcp-apps-in-chatgpt) for availability and legacy setup paths.
+> **Adding a custom MCP server:** In the current **Plugins → Add → Add custom MCP server** flow, you do not need to turn on Developer Mode first. Account and workspace permissions can still limit who may create an app. See [OpenAI's current setup guide](https://developers.openai.com/api/docs/guides/custom-mcp-server) for availability and connection options.
 
 Core, Desktop and Plugins are separate plugins in ChatGPT. Configure each surface you enable. Release packages include the pinned, checksum-verified `tunnel-client`.
 
