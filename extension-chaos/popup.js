@@ -2,6 +2,7 @@ const state = document.querySelector('#state');
 const host = document.querySelector('#host');
 const detail = document.querySelector('#detail');
 const refresh = document.querySelector('#refresh');
+const disconnect = document.querySelector('#disconnect');
 const copy = document.querySelector('#copy');
 const copyStatus = document.querySelector('#copy-status');
 
@@ -29,6 +30,13 @@ Available actions:
 
 Call health first to learn the approved virtual roots and live permissions. Prefer direct file/process actions over delegating to another coding harness. Never invent a result and never repeat a successful mutation merely because a previous receipt was not understood.`;
 
+function paintDisconnected(message = 'Native host is stopped for this extension session.') {
+  state.textContent = 'Not connected';
+  state.className = 'state bad';
+  host.textContent = 'Stopped';
+  detail.textContent = message;
+}
+
 async function update() {
   refresh.disabled = true;
   state.textContent = 'Checking…';
@@ -43,22 +51,25 @@ async function update() {
       host.textContent = 'Running';
       detail.textContent = `Protocol ${result.response?.protocol ?? '?'}. Local I/O is available without an MCP tunnel.`;
     } else {
-      state.textContent = 'Not connected';
-      state.className = 'state bad';
-      host.textContent = 'Unavailable';
-      detail.textContent = result?.error || 'Chrome could not reach the chaOS native host.';
+      paintDisconnected(result?.error || 'Chrome could not reach the chaOS native host.');
     }
   } catch (error) {
-    state.textContent = 'Not connected';
-    state.className = 'state bad';
-    host.textContent = 'Unavailable';
-    detail.textContent = String(error?.message || error);
+    paintDisconnected(String(error?.message || error));
   } finally {
     refresh.disabled = false;
   }
 }
 
 refresh.addEventListener('click', () => void update());
+disconnect.addEventListener('click', async () => {
+  disconnect.disabled = true;
+  try {
+    await chrome.runtime.sendMessage({ type: 'chaos-disconnect' });
+    paintDisconnected();
+  } finally {
+    disconnect.disabled = false;
+  }
+});
 copy.addEventListener('click', async () => {
   try {
     await navigator.clipboard.writeText(BRIDGE_INSTRUCTIONS);
