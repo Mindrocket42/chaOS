@@ -6,6 +6,7 @@ on:
       - 'src/main/bootstrap.ts'
       - 'src/main/native/**'
       - 'extension-chaos/**'
+      - 'scripts/verify-chaos-native-host.mjs'
       - 'electron.vite.config.ts'
       - 'package.json'
       - 'package-lock.json'
@@ -35,6 +36,8 @@ jobs:
         run: npx vitest run test/native-protocol.test.ts
       - name: Build unpacked Windows x64 app
         run: npm run dist:dir:x64
+      - name: Exercise packaged native host using Chrome framing
+        run: node scripts/verify-chaos-native-host.mjs "release/win-unpacked/Chat On Steroids.exe"
       - name: Stage browser-native proof
         shell: pwsh
         run: |
@@ -54,6 +57,8 @@ jobs:
           Transport: Chrome Native Messaging
           MCP tunnel: Not used
           Native host: Running
+
+          The packaged executable has already passed the same length-prefixed stdin/stdout wire protocol Chrome Native Messaging uses.
 
           To remove local browser access, click Disconnect local bridge in the popup.
           To remove the Chrome native-host registration entirely, double-click unregister-host.cmd.
