@@ -16,8 +16,17 @@ export function nativeMessagingOrigin(argv: readonly string[] = process.argv): s
 const origin = nativeMessagingOrigin();
 
 if (origin) {
-  const { runNativeMessagingHost } = await import('./native/host.js');
-  await runNativeMessagingHost(origin);
+  void import('./native/host.js')
+    .then(({ runNativeMessagingHost }) => runNativeMessagingHost(origin))
+    .catch((error: unknown) => {
+      const message = error instanceof Error ? error.stack ?? error.message : String(error);
+      process.stderr.write(`chaOS native host failed to start: ${message}\n`);
+      process.exitCode = 1;
+    });
 } else {
-  await import('./index.js');
+  void import('./index.js').catch((error: unknown) => {
+    const message = error instanceof Error ? error.stack ?? error.message : String(error);
+    process.stderr.write(`chaOS desktop app failed to start: ${message}\n`);
+    process.exitCode = 1;
+  });
 }
