@@ -2,20 +2,30 @@ const HOST = 'pro.ironhead.chaos';
 let port = null;
 const pending = new Map();
 
+function disconnect() {
+  const held = port;
+  port = null;
+  pending.clear();
+  if (held) {
+    try { held.disconnect(); } catch { /* already gone */ }
+  }
+}
+
 function getPort() {
   if (port) return port;
   port = chrome.runtime.connectNative(HOST);
-  port.onMessage.addListener((message) => {
+  const connectedPort = port;
+  connectedPort.onMessage.addListener((message) => {
     const waiter = message && typeof message.id === 'string' ? pending.get(message.id) : null;
     if (!waiter) return;
     pending.delete(message.id);
     waiter(message);
   });
-  port.onDisconnect.addListener(() => {
-    port = null;
+  connectedPort.onDisconnect.addListener(() => {
+    if (port === connectedPort) port = null;
     pending.clear();
   });
-  return port;
+  return connectedPort;
 }
 
 function send(request) {
@@ -47,6 +57,11 @@ chrome.runtime.onMessage.addListener((message, _sender, respond) => {
       (error) => respond({ connected: false, error: String(error?.message || error) })
     );
     return true;
+  }
+  if (message.type === 'chaos-disconnect') {
+    disconnect();
+    respond({ ok: true, connected: false });
+    return false;
   }
   if (message.type === 'chaos-call' && message.call) {
     const call = message.call;
