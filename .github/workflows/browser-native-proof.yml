@@ -6,7 +6,6 @@ on:
       - 'src/main/bootstrap.ts'
       - 'src/main/native/**'
       - 'extension-chaos/**'
-      - 'scripts/register-chaos-native-host.mjs'
       - 'electron.vite.config.ts'
       - 'package.json'
       - 'package-lock.json'
@@ -42,13 +41,22 @@ jobs:
           New-Item -ItemType Directory -Force browser-native-proof | Out-Null
           Copy-Item -Recurse release/win-unpacked browser-native-proof/chaOS
           Copy-Item -Recurse extension-chaos browser-native-proof/extension-chaos
-          Copy-Item scripts/register-chaos-native-host.mjs browser-native-proof/register-chaos-native-host.mjs
+          Set-Content -Encoding ASCII browser-native-proof/register-host.cmd '@echo off & "%~dp0chaOS\Chat On Steroids.exe" --register-chaos-native-host & pause'
+          Set-Content -Encoding ASCII browser-native-proof/unregister-host.cmd '@echo off & "%~dp0chaOS\Chat On Steroids.exe" --unregister-chaos-native-host & pause'
           @'
-          Open a terminal in this folder and run:
-          node .\register-chaos-native-host.mjs --exe ".\chaOS\Chat On Steroids.exe"
+          1. Double-click register-host.cmd.
+          2. Open chrome://extensions and enable Developer mode.
+          3. Choose Load unpacked and select the extension-chaos folder in this proof bundle.
+          4. Open the chaOS Local Bridge extension popup.
 
-          Then load extension-chaos as an unpacked Chrome extension.
-          The popup must report Chrome Native Messaging and MCP tunnel: Not used.
+          Expected:
+          Connected
+          Transport: Chrome Native Messaging
+          MCP tunnel: Not used
+          Native host: Running
+
+          To remove local browser access, click Disconnect local bridge in the popup.
+          To remove the Chrome native-host registration entirely, double-click unregister-host.cmd.
           '@ | Set-Content -Encoding UTF8 browser-native-proof/README.txt
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v6
         with:
