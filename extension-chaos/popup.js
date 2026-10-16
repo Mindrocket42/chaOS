@@ -1,8 +1,11 @@
 const state = document.querySelector('#state');
 const host = document.querySelector('#host');
+const chatState = document.querySelector('#chat-state');
 const detail = document.querySelector('#detail');
 const refresh = document.querySelector('#refresh');
 const disconnect = document.querySelector('#disconnect');
+const enableChat = document.querySelector('#enable-chat');
+const disableChat = document.querySelector('#disable-chat');
 const copy = document.querySelector('#copy');
 const copyStatus = document.querySelector('#copy-status');
 
@@ -37,6 +40,32 @@ function paintDisconnected(message = 'Native host is stopped for this extension 
   detail.textContent = message;
 }
 
+async function activeChatTab() {
+  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+  if (!tab?.id) throw new Error('No active browser tab');
+  return tab.id;
+}
+
+async function chatMessage(message) {
+  return await chrome.tabs.sendMessage(await activeChatTab(), message);
+}
+
+async function updateChatState() {
+  try {
+    const result = await chatMessage({ type: 'chaos-auto-state' });
+    if (result?.enabled) {
+      chatState.textContent = `Automatic · ${result.remaining} actions left`;
+      chatState.className = 'ok';
+    } else {
+      chatState.textContent = 'Manual';
+      chatState.className = '';
+    }
+  } catch {
+    chatState.textContent = 'Not a ChatGPT tab';
+    chatState.className = '';
+  }
+}
+
 async function update() {
   refresh.disabled = true;
   state.textContent = 'Checking…';
@@ -58,6 +87,7 @@ async function update() {
   } finally {
     refresh.disabled = false;
   }
+  await updateChatState();
 }
 
 refresh.addEventListener('click', () => void update());
@@ -70,10 +100,38 @@ disconnect.addEventListener('click', async () => {
     disconnect.disabled = false;
   }
 });
+enableChat.addEventListener('click', async () => {
+  enableChat.disabled = true;
+  copyStatus.textContent = '';
+  try {
+    const result = await chatMessage({ type: 'chaos-auto-enable' });
+    if (!result?.ok) throw new Error(result?.error || 'Could not enable this chat');
+    chatState.textContent = `Automatic · ${result.remaining} actions left`;
+    chatState.className = 'ok';
+    copyStatus.textContent = 'Automatic bridge enabled only for this tab. Reloading the page disables it.';
+  } catch (error) {
+    copyStatus.textContent = `Could not enable this chat: ${String(error?.message || error)}`;
+  } finally {
+    enableChat.disabled = false;
+  }
+});
+disableChat.addEventListener('click', async () => {
+  disableChat.disabled = true;
+  try {
+    await chatMessage({ type: 'chaos-auto-disable' });
+    chatState.textContent = 'Manual';
+    chatState.className = '';
+    copyStatus.textContent = 'Automatic bridge disabled for this tab.';
+  } catch (error) {
+    copyStatus.textContent = `Could not disable this chat: ${String(error?.message || error)}`;
+  } finally {
+    disableChat.disabled = false;
+  }
+});
 copy.addEventListener('click', async () => {
   try {
     await navigator.clipboard.writeText(BRIDGE_INSTRUCTIONS);
-    copyStatus.textContent = 'Bridge instructions copied. Paste them once into the ChatGPT conversation you want chaOS to serve.';
+    copyStatus.textContent = 'Manual bridge instructions copied.';
   } catch (error) {
     copyStatus.textContent = `Could not copy: ${String(error?.message || error)}`;
   }
