@@ -23,6 +23,8 @@ The next refinement may automate result hand-back, but it must remain a thin tra
 
 This first slice is deliberately not a finished replacement for MCP yet. The acceptance boundary is narrower: prove that ChatGPT browser output can request a bounded action, Chrome can hand it directly to chaOS, and chaOS can return a real receipt without a tunnel.
 
+Operationally, the bridge has one obvious stop control: disable/remove the extension or close its native messaging port. There is no separate tunnel process to find or kill in browser-native mode.
+
 ## Windows development setup
 
 1. Build/package chaOS so there is a real packaged executable.
