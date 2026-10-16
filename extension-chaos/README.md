@@ -21,6 +21,8 @@ The current content bridge deliberately requires a user click for each detected 
 
 The next refinement may automate result hand-back, but it must remain a thin transport shim. It must not grow workers, tab schedulers, Goal/Loop, conversation persistence, model selection, or recovery orchestration.
 
+This first slice is deliberately not a finished replacement for MCP yet. The acceptance boundary is narrower: prove that ChatGPT browser output can request a bounded action, Chrome can hand it directly to chaOS, and chaOS can return a real receipt without a tunnel.
+
 ## Windows development setup
 
 1. Build/package chaOS so there is a real packaged executable.
