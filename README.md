@@ -2,6 +2,52 @@
 
 **ChatGPT decides. chaOS executes.**
 
+> **Testing `chaos-core-first-refresh` on Windows? Do not run `npm ci` or `npm run dev`.** Those commands belong to the inherited Chat On Steroids Electron application and are not the browser-native chaOS test path. Browser-native chaOS uses a standalone Go host plus the unpacked Chrome extension; Electron, MCP and the OpenAI Secure MCP Tunnel are not required.
+
+## Test the browser-native build
+
+From an existing checkout, first make sure you are on the actual work branch:
+
+```text
+git fetch origin && git switch chaos-core-first-refresh && git pull --ff-only origin chaos-core-first-refresh
+```
+
+Then run:
+
+```text
+TEST-BROWSER-NATIVE.cmd
+```
+
+That script:
+
+1. verifies that Go is available;
+2. runs the standalone native-host tests;
+3. builds `chaos-host.exe`;
+4. registers it as the per-user Chrome Native Messaging host;
+5. prints the closed-by-default local configuration.
+
+The source build currently requires **Go 1.23 or newer**. It does **not** require Electron or the root npm dependency tree.
+
+After the script passes:
+
+1. open `chrome://extensions`;
+2. enable **Developer mode**;
+3. choose **Load unpacked**;
+4. select this repo's `extension-chaos` folder;
+5. open ChatGPT in Chrome and click **chaOS Local Bridge**.
+
+Expected initial state: the native host is reachable, but there are **no approved roots and all local capabilities are off**. A basic health/transport check therefore does not grant file or command access.
+
+To remove the native-host registration:
+
+```text
+chaos-host.exe --unregister
+```
+
+If `npm run dev` opens Vite or fails looking for Electron, stop: **that is the inherited CoS desktop runtime, not the browser-native chaOS path being tested here.**
+
+---
+
 chaOS is a deliberately small local I/O bridge for ChatGPT. Its primary browser path does not use MCP, an OpenAI Secure MCP Tunnel, `tunnel-client`, a localhost HTTP server, worker chats, Goal/Loop or a second orchestration runtime.
 
 ```text
