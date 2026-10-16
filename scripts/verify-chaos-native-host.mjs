@@ -32,11 +32,7 @@ const timeout = setTimeout(() => {
   process.exitCode = 1;
 }, 15000);
 
-afterWrite();
-
-function afterWrite() {
-  child.stdin.end(frame);
-}
+child.stdin.end(frame);
 
 child.once('error', (error) => {
   clearTimeout(timeout);
@@ -48,16 +44,15 @@ child.once('close', (code, signal) => {
   clearTimeout(timeout);
   const output = Buffer.concat(stdout);
   const errors = Buffer.concat(stderr).toString('utf8').trim();
+  const diagnostic = `exit=${code} signal=${signal ?? 'none'} stdout_hex=${output.toString('hex') || '<empty>'} stderr=${JSON.stringify(errors)}`;
   if (output.length < 4) {
-    console.error(`Native host produced ${output.length} stdout bytes; expected a framed response.`);
-    if (errors) console.error(errors);
+    console.error(`Native host produced ${output.length} stdout bytes; expected a framed response. ${diagnostic}`);
     process.exitCode = 1;
     return;
   }
   const size = output.readUInt32LE(0);
   if (size < 2 || size > 1024 * 1024 || output.length !== size + 4) {
-    console.error(`Native host returned an invalid frame: declared ${size} bytes, received ${output.length - 4}.`);
-    if (errors) console.error(errors);
+    console.error(`Native host returned an invalid frame: declared ${size} bytes, received ${output.length - 4}. ${diagnostic}`);
     process.exitCode = 1;
     return;
   }
@@ -65,18 +60,17 @@ child.once('close', (code, signal) => {
   try {
     response = JSON.parse(output.subarray(4).toString('utf8'));
   } catch (error) {
-    console.error(`Native host response was not JSON: ${error.message}`);
+    console.error(`Native host response was not JSON: ${error.message}. ${diagnostic}`);
     process.exitCode = 1;
     return;
   }
   if (response?.type !== 'result' || response?.id !== 'wire-proof' || response?.ok !== true || response?.protocol !== 1) {
-    console.error(`Unexpected native host response: ${JSON.stringify(response)}`);
+    console.error(`Unexpected native host response: ${JSON.stringify(response)}. ${diagnostic}`);
     process.exitCode = 1;
     return;
   }
   if (code !== 0 || signal) {
-    console.error(`Native host answered correctly but exited abnormally: code=${code} signal=${signal}`);
-    if (errors) console.error(errors);
+    console.error(`Native host answered correctly but exited abnormally. ${diagnostic}`);
     process.exitCode = 1;
     return;
   }
