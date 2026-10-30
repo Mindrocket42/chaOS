@@ -12,7 +12,10 @@ export default defineConfig({
     // rather than being inlined by the bundler.
     plugins: [externalizeDepsPlugin()],
     build: {
-      rollupOptions: { input: resolve(__dirname, 'src/main/index.ts') }
+      // Keep the packaged filename `out/main/index.js` while putting a tiny process router
+      // in front of the legacy Electron app. Chrome Native Messaging can then invoke the same
+      // executable without starting the desktop UI or any MCP/tunnel machinery.
+      rollupOptions: { input: { index: resolve(__dirname, 'src/main/bootstrap.ts') } }
     }
   },
   preload: {

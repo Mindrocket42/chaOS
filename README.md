@@ -1,86 +1,262 @@
-<p align="center"><img src="docs/images/readme-hero.svg?v=2" width="960" alt="Turn ChatGPT into Codex-style local coding. Chat On Steroids: Your files. Your terminal. Your ChatGPT plan." /></p>
+# chaOS
 
-<p align="center">
-  <a href="https://github.com/totec448-spec/chat-on-steroids/releases/latest/download/Chat-On-Steroids-Setup-x64.exe"><img src="docs/images/download-windows.svg" width="208" height="56" alt="Download for Windows x64" /></a>&nbsp;
-  <a href="https://github.com/totec448-spec/chat-on-steroids/releases/latest/download/Chat-On-Steroids-macOS-arm64.dmg"><img src="docs/images/download-macos.svg" width="208" height="56" alt="Download for macOS Apple silicon" /></a>&nbsp;
-  <a href="https://github.com/totec448-spec/chat-on-steroids/releases/latest/download/Chat-On-Steroids-Linux-x64.deb"><img src="docs/images/download-linux.svg" width="208" height="56" alt="Download for Linux x64" /></a>
-</p>
+**ChatGPT decides. chaOS executes. Receipts prove what happened.**
 
-<p align="center"><a href="https://github.com/totec448-spec/chat-on-steroids/releases/latest">All downloads</a></p>
+chaOS is a small browser-to-local execution bridge for ChatGPT. Its current path is a Chrome extension plus a standalone Go native host. It does **not** require Electron, MCP, an OpenAI Secure MCP Tunnel, worker chats, Goal/Loop, or a second orchestration runtime.
 
-<p align="center"><sub>Independent beta. Use at your own risk and within your provider's rules. <a href="#responsible-use-and-provider-rules">Read the usage notice</a> before connecting.</sub></p>
+> Current development line: `chaos-core-second-refresh`
+>
+> Canonical architecture: [`docs/CURRENT-ARCHITECTURE.md`](docs/CURRENT-ARCHITECTURE.md)
 
-<br />
+## Quick start — Windows browser-native build
 
-<p align="center"><a href="docs/images/demo.mp4"><img src="docs/images/demo.gif" width="960" alt="Chat On Steroids in action: model selection, task plans, live tool results and reusable workers" /></a></p>
+From an existing checkout:
 
-<p align="center"><a href="#get-started">Get started</a> &nbsp;·&nbsp; <a href="docs/images/demo.mp4">Watch the demo</a> &nbsp;·&nbsp; <a href="CHANGELOG.md">What’s new</a></p>
+```text
+git fetch origin && git switch chaos-core-second-refresh && git pull --ff-only origin chaos-core-second-refresh
+```
 
-<br />
+Then run:
 
-<h2 align="center">Code. Delegate. Keep going.</h2>
+```text
+TEST-BROWSER-NATIVE.cmd
+```
 
-**Work on the real project.** Let ChatGPT read and edit files, run tests, keep terminals open and use your desktop. Follow the actual tool results as they arrive.
+The script:
 
-**Give it a team.** Split independent jobs across workers, then bring their results back. Workers keep their context, so the next task can pick up where they left off.
+1. checks extension JavaScript syntax when Node is available;
+2. runs `go test ./...` in `native-host`;
+3. runs `go vet ./...`;
+4. builds `chaos-host.exe`;
+5. registers it as the current Windows user's Chrome Native Messaging host;
+6. prints the local chaOS configuration and the remaining live Chrome checks.
 
-**Stay in control of long tasks.** Send a correction while work runs. Goal follows unfinished work; Loop keeps working within your brief. Compact & Resume carries the session and worker history into a fresh chat.
+The native source build requires **Go 1.23 or newer**. Node 22+ is recommended for the extension syntax proof. Browser-native chaOS does **not** require `npm ci`, `npm run dev`, Electron, or the inherited root npm dependency tree.
 
-<p align="center"><strong>Uses your ChatGPT conversation rather than invoking Codex directly.</strong><br /><sub>ChatGPT Work and Codex share usage limits. Your account’s model availability, usage and context limits still apply. <a href="https://learn.chatgpt.com/docs/pricing">OpenAI usage details →</a></sub></p>
+After the script passes:
 
-## Responsible use and provider rules
+1. open `chrome://extensions`;
+2. enable **Developer mode**;
+3. choose **Load unpacked**;
+4. select this repository's `extension-chaos` folder;
+5. open ChatGPT in Chrome;
+6. open **chaOS Local Bridge**.
 
-Chat On Steroids is an independent, open-source workspace for coding and other authorized tasks with your own files and tools. It is intended to support productive work within the rules of the services you use. **It is not intended to bypass usage limits, account restrictions or safety controls.**
+Fresh configuration starts closed:
 
-Use CoS in accordance with OpenAI's applicable [Terms of Use](https://openai.com/policies/terms-of-use/) ([Europe Terms](https://openai.com/policies/eu-terms-of-use/) for the EEA, Switzerland and UK), [Usage Policies](https://openai.com/policies/usage-policies/) and [Service Terms](https://openai.com/policies/service-terms/), plus your workspace's rules and any connected service's terms.
+```text
+approved roots: none
+read:            off
+search:          off
+write:           off
+command:         off
+```
 
-- **Respect limits and access decisions.** Workers, Goal/Loop, Compact & Resume and finish checkpoints organize work; they do not grant extra quota or model access and must not be used to evade rate limits, usage caps or account restrictions. Do not switch accounts, chats, plugins or tunnels to evade a restriction.
-- **Respect safety decisions.** Do not use local tools, browser control, plugins or another worker to carry out an action that the provider blocked for safety. A local permission or an enabled MCP plugin is not permission to override a provider refusal.
-- **Understand the integration.** CoS connects local tools through MCP. Its browser extension also observes and automates the ChatGPT browser UI and records conversation content locally. This browser integration is not a public ChatGPT automation API. MCP availability does not establish permission for every form of browser automation or recording; OpenAI's terms also restrict automated or programmatic extraction of data or output.
-- **Use at your own risk.** Review the rules for your account and intended workflow before connecting, supervise automation and review tool actions and outputs. CoS cannot guarantee policy compliance, continued service access or protection from account warnings, restrictions or suspension. If a workflow is restricted or receives a policy warning, stop that workflow and seek clarification through the provider's support or appeal process.
+A successful connection proves transport availability. It does **not** grant filesystem or command access.
 
-This notice states the project's intended use; it does not certify compliance or change provider rules. CoS is not affiliated with, endorsed by or approved by OpenAI. The software is provided as-is under the [MIT license](LICENSE); applicable statutory rights remain unaffected. See [Security](SECURITY.md) for local permissions and risks.
+To remove the native-host registration:
 
-<br />
+```text
+chaos-host.exe --unregister
+```
 
-## Get started
+If `npm run dev` starts Vite/Electron, stop. That is inherited Chat On Steroids code, not the current chaOS runtime.
 
-1. **Install CoS** and open **Settings → Setup**. It walks you through seven short steps, with pictures of what to click.
-2. **Connect your browser** (step 1): load the browser extension in Chrome, Edge or Brave. Setup shows your browser's own extensions page in your language: turn on **Developer mode**, click **Load unpacked** and choose the folder that **Open extension folder** shows. Pairing is automatic.
-3. **Share a folder and choose access** (steps 2–3): the folder ChatGPT may work in, and what it may do there.
-4. **Connect Core** (steps 4–7): create a tunnel and a restricted API key at OpenAI, press **Connect**, then add the app in ChatGPT under **Plugins → Add → Add custom MCP server**. [Tunnel setup →](docs/setup.md#tunnel-setup)
-5. **Choose a model, write your task and send.**
+## Architecture
 
-<details>
-<summary>Requirements &amp; installation notes</summary>
+```text
+ChatGPT in Chrome
+       |
+       | explicit action envelope
+       v
+extension-chaos
+       |
+       | Chrome Native Messaging
+       v
+chaos-host.exe
+       |
+       +-- approved virtual filesystem roots
+       +-- retained local processes
+       +-- ordinary local programs / coding harnesses
+```
 
-Windows 10/11, **macOS 13 Ventura or newer**, or a current desktop Linux. Chrome 125+, current Edge or Brave, plus a ChatGPT account/workspace that can create custom MCP apps (availability depends on your plan and workspace policy). [Check account availability](https://help.openai.com/en/articles/12584461-developer-mode-and-mcp-apps-in-chatgpt).
+ChatGPT remains the orchestrator. The extension is transport glue. The Go host owns local capability enforcement and receipts.
 
-- **Unsigned beta:** Windows is not publisher-signed; macOS is unsigned and unnotarized. Verify the package against the release checksums. Because of that, macOS asks once after each update for your login password so the new version can open its saved keys ("chat-on-steroids Safe Storage"); choose **Always Allow**. Until you answer, chats and the browser connection wait, and the app says so.
-- **Linux:** a Secret Service keyring is required. Prefer the DEB; when unprivileged user namespaces are disabled, the AppImage launcher can fall back to <code>--no-sandbox</code>.
-- **Permissions:** choose your approved folders and review capabilities before connecting. Fresh installs enable Core capabilities and two workers; Windows also enables Desktop permissions. Shell commands run with your normal user privileges.
-- **Languages:** English, German, Spanish, French, Korean, Portuguese (Brazil and Portugal), Russian, Turkish, Vietnamese, Japanese, and Simplified and Traditional Chinese. Choose one in **Appearance → Language**.
-- **After updating:** the browser extension updates itself once no chat is busy. If CoS asks you to refresh its apps in ChatGPT, do so; **Automatic plugin refresh** in Settings can do it for you.
+Supported actions:
 
-</details>
+```text
+health
+fs.list
+fs.read
+fs.search
+fs.write
+fs.replace
+proc.run
+proc.read
+proc.write
+proc.stop
+```
 
-<details>
-<summary>More screenshots</summary>
+### Filesystem boundary
 
-![Conversation, workers and task plan](docs/images/workspace.png)
+File actions operate through approved virtual roots such as `/project`. `health` exposes virtual root names, not host paths.
 
-![Model and reasoning selection](docs/images/model-picker.png)
+Local grants are explicit:
 
-![Folder and capability settings](docs/images/settings.png)
+```text
+chaos-host.exe --status
+chaos-host.exe --add-root project "C:\path\to\project"
+chaos-host.exe --remove-root project
+chaos-host.exe --set-capability read on
+chaos-host.exe --set-capability search on
+chaos-host.exe --set-capability write on
+chaos-host.exe --set-capability command on
+```
 
-</details>
+`command` is intentionally separate from the virtual-root boundary. When enabled, a shell command runs with the logged-in OS user's normal authority and is **not** represented as confined to approved roots.
 
-<br />
+## Provenance and receipts
 
----
+The second refresh strengthens the execution boundary without adding an agent framework.
 
-<p align="center"><a href="docs/setup.md">Setup &amp; help</a> &nbsp;·&nbsp; <a href="docs/plugins.md">Plugins</a> &nbsp;·&nbsp; <a href="CONTRIBUTING.md">Contribute</a> &nbsp;·&nbsp; <a href="SECURITY.md">Security</a> &nbsp;·&nbsp; <a href="LICENSE">MIT license</a></p>
+The extension derives caller provenance from Chrome transport metadata. Privileged calls are bound to a specific ChatGPT browser document rather than trusting model-supplied identity or a tab number alone.
 
-<p align="center">Built with our <a href="CONTRIBUTORS.md">community contributors</a>. Thank you to the people behind the code, designs, bug reports and testing.</p>
+Native receipts can include:
 
-<p align="center"><sub>Not affiliated with or endorsed by OpenAI. ChatGPT and Codex are OpenAI trademarks.</sub></p>
+- receipt schema version;
+- native-host instance id;
+- request id and action;
+- browser caller context, including Chrome document id;
+- start/finish timestamps and duration;
+- capability fingerprint;
+- action-specific evidence.
+
+Successful `fs.write` and `fs.replace` receipts include the resulting virtual path, byte count and SHA-256 digest.
+
+Successful request ids are idempotent within one native-host lifetime: exact replay returns the original result; reuse with different args or caller context is rejected.
+
+## Retained processes
+
+A numeric `process_id` is not sufficient authority by itself.
+
+`proc.run` records the browser document that started the retained process and, when the OS RNG is available, returns a random `process_token`.
+
+- The starting document can read/write/stop its process directly.
+- After a reload or other browser-document boundary, a later ChatGPT document must supply the returned `process_token` to recover that process handle.
+- Missing, incorrect, or unknown ownership fails closed.
+
+The token therefore preserves useful long-running process recovery without making a guessable integer a bearer credential.
+
+## Browser modes
+
+### Manual
+
+ChatGPT emits one `CHAOS_ACTION_BEGIN` / `CHAOS_ACTION_END` action. The extension shows **Run with chaOS** and exposes the real result for copying back to the conversation.
+
+### Automatic — explicit browser-document opt-in
+
+Choose **Enable automatic bridge in this chat** from the extension popup.
+
+The extension then:
+
+1. creates a random nonce for that browser document;
+2. sends ChatGPT the action/result protocol;
+3. accepts only matching nonce-bound actions;
+4. executes one action at a time;
+5. returns the real receipt as the next user message;
+6. stops naturally when ChatGPT answers without another action.
+
+Automatic mode disappears on reload and is capped at 50 actions. It does not become a worker scheduler, tab manager, recovery engine, model selector, or local agent framework.
+
+A retained OS process may survive a reload; use its `process_token` for explicit recovery from the new document.
+
+## Why this exists
+
+chaOS began as a fork of Chat On Steroids (CoS). CoS contains substantial engineering, but its product/runtime grew around Electron, MCP connectors/tunnels, durable conversation recording, browser automation, workers, Goal/Loop and other orchestration machinery.
+
+chaOS takes a narrower position:
+
+1. **Direct capability beats delegation.** Read/write/run directly instead of spawning a local worker to do it.
+2. **Transport is replaceable.** Local authority must not depend on MCP or a tunnel.
+3. **Execution must be inspectable.** One browser extension plus one native host should explain what is running.
+4. **Access starts closed.** No approved roots or capabilities are silently granted.
+5. **ChatGPT orchestrates.** chaOS does not duplicate the model's planning/runtime layer locally.
+6. **Durable work state belongs in the workspace.** Conversation recording is not the execution source of truth.
+7. **Receipts beat assertions.** Local mutation claims should carry evidence that can be checked.
+
+## Current vs inherited repository content
+
+The repository still contains upstream CoS history and source for provenance and cribbing. That material is **not** the current chaOS operating contract unless explicitly referenced by the current architecture.
+
+Current authority:
+
+```text
+docs/CURRENT-ARCHITECTURE.md
+AGENTS.md
+README.md
+native-host/
+extension-chaos/
+```
+
+Historical/reference lines:
+
+```text
+archive/chaos-core-first-2026-09-29
+upstream-sync-2026-10-16
+chaos-core-first-refresh
+```
+
+The root `package.json`, Electron sources, old CoS docs and historical package metadata are upstream/reference material unless and until deliberately adopted into chaOS. Do not infer the current runtime from them.
+
+## Development checks
+
+Primary current checks:
+
+```text
+cd native-host && go test ./... && go vet ./...
+node --check extension-chaos/background.js
+node --check extension-chaos/content.js
+node --check extension-chaos/popup.js
+```
+
+Windows proof:
+
+```text
+TEST-BROWSER-NATIVE.cmd
+```
+
+The active GitHub workflows are:
+
+```text
+.github/workflows/ci.yml
+.github/workflows/browser-native-proof.yml
+.github/workflows/codeql.yml
+```
+
+## Verification status
+
+This is still a proof line, not a release.
+
+Verified during the 2026-10-30 housekeeping run:
+
+- the current `background.js`, `content.js` and `popup.js` contents were fetched from `chaos-core-second-refresh` and all three passed `node --check` under Node 22.16.0;
+- the active workflow directory was reduced to the three chaOS workflows listed above.
+
+Previously verified:
+
+- the first-refresh standalone native-host/framing path passed its focused proof.
+
+Still required before the second refresh should be promoted from draft:
+
+1. `go test ./...` and `go vet ./...` against the current second-refresh native host;
+2. Windows Chrome Native Messaging framing proof against the current head;
+3. a live Chrome mutation receipt proving browser document identity, host instance, capability fingerprint and file SHA-256;
+4. retained-process recovery across a page reload using the returned `process_token`.
+
+The connected execution environment could not clone GitHub because outbound DNS to github.com is unavailable, and GitHub Actions emitted no run for the current PR head through the connected API. Those missing runtime receipts are therefore still listed rather than inferred.
+
+Do not treat tests-written, static review, or first-refresh proof as evidence that these second-refresh runtime gates have passed.
+
+See [`docs/CHAOS-SECOND-REFRESH-WORKING-STATE.md`](docs/CHAOS-SECOND-REFRESH-WORKING-STATE.md) for the implementation/audit record.
+
+MIT licensed.

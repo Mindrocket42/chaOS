@@ -1,55 +1,121 @@
-# Security policy
+# chaOS security policy
 
 ## Reporting a vulnerability
 
-**Please do not open a public issue or pull request for a security problem.** Use GitHub's private vulnerability reporting for this repository: **Security → Report a vulnerability**.
+Do not open a public issue or pull request for a security problem. Use GitHub's private **Security → Report a vulnerability** flow for this repository.
 
-Include the smallest useful reproduction, the app version, operating-system version/architecture, and whether the Chrome extension was connected. Redact personal file contents, usernames/paths, conversation text and account/workspace identifiers. Never post live API keys, connector URLs, tunnel tokens or other credentials. Rotate anything accidentally exposed.
+Include the smallest useful reproduction, operating-system/browser versions, the chaOS branch/commit, which local capabilities were enabled, and whether the Chrome extension/native host were connected.
 
-This is a solo-maintained beta. There is no bug bounty or guaranteed response window.
+Redact personal file contents, usernames/paths, conversation text, account/workspace identifiers and all credentials. Never post live API keys, cookies, tokens, connector URLs, tunnel secrets or private session URLs. Rotate anything accidentally exposed.
 
-Security fixes target the **latest published release**. If you can reproduce an issue safely on
-the latest version, include that result in the private report.
+chaOS is currently proof-stage software. There is no bug bounty or guaranteed response window.
 
 ## Security model
 
-Chat On Steroids is a permission boundary between ChatGPT and the logged-in OS user running the app:
+chaOS sits between ChatGPT/browser intent and the logged-in OS account running the native host.
 
-- Filesystem tools validate paths against folders you explicitly approve.
-- Read-only mode disables effective file writes, commands, desktop control and clipboard writes.
-- `exec_command` is intentionally **not** confined to approved folders. It starts in an approved working directory, then runs with the normal privileges of your account.
-- The optional Allowlist/Denylist command policy controls which simple command invocation may start. Unsupported shell syntax still fails closed. It does not sandbox a permitted executable, its child processes, interactive stdin, build scripts or later filesystem/system effects.
-- Screen/control permissions also enable the companion's background browser tools on Chromium hosts. Chrome grants required debugger/tabs and HTTP(S) host permissions; there is no additional per-tab approval dialog. Read-only disables browser input, navigation, tab creation/closure and page JavaScript. Native screen, mouse/keyboard and clipboard remain desktop-wide on supported Windows/macOS hosts, independent of approved folders and macOS OS consent.
-- MCP servers bind to loopback and use secret tokenized paths. Public reachability comes only from the tunnel you configure.
-- The companion-extension bridge is a separate loopback service and exposes no filesystem, command or settings-mutation route.
-- Google sign-in for the built-in browser opens the user's installed Chrome/Edge/Brave with its normal profile. The companion requests optional cookie access only when the user clicks its session-transfer button. It may open its own popup when a login it watched returns to ChatGPT, ChatGPT confirms a signed-in session in that tab, and that transfer is pending; opening the popup reads and sends nothing. It sends only ChatGPT session-token cookies over the paired bridge for an outstanding, expiring sign-in operation; the app writes them to its browser partition without recording or logging their values. Disconnect cancels the operation. Importing a cookie does not prove ChatGPT will accept it, and there is no automatic session synchronization.
-- The optional local control API is off by default. When turned on, it is a loopback-only service for a local agent that reads app status, chat history, tool activity, queued messages, workers and the Activity log. A second switch, off by default and off whenever the API is off, also lets it send a message to an existing chat and cancel a message that has not been delivered.
-  - Its per-launch token is written to the app's user data folder and never issued over HTTP. Any process that can read that folder can use the API.
-  - It refuses any browser Origin.
-  - Actions go through the same outbox as the composer, are refused without the second switch before any request body is read, and never resend a message whose delivery is unconfirmed. A send connects the app and opens the chat in your browser as the composer would, and a model that reads the message can act under the permissions you have granted, so treat the token, with that switch on, as the ability to speak in your chats. Turning the API off turns actions off, and turning it on again leaves them off.
-  - It never returns MCP paths, tunnel ids, plugin configuration or credentials from the app's own state. Chat, tool and log text has known credential shapes (API keys, common vendor tokens, bearer headers, JWTs, URL passwords, private keys) masked and is length-capped, but anything else you typed into a chat is returned as recorded. Treat the token like access to your history.
-- Stored API/bridge credentials use Electron `safeStorage` (DPAPI on Windows, Keychain on macOS, a secure desktop secret store on Linux). Linux `basic_text` is refused; normal Activity logs are redacted, capped and memory-only.
-- Session recording is separate durable local history. It is always on, and history is kept until you delete a chat.
+### Closed-by-default local grants
 
-## Provider rules and responsible use
+Fresh configuration exposes no approved roots and enables no local capability:
 
-Local permissions control access to your machine; they do not authorize bypassing a provider's safety decision, usage limit or account restriction. Do not route a blocked action through another tool, worker, connector or account. Follow the [responsible-use notice](README.md#responsible-use-and-provider-rules) and the applicable provider terms.
+```text
+approved roots: none
+read:            off
+search:          off
+write:           off
+command:         off
+```
 
-CoS is an independent beta used at your own risk. Its browser automation and local recording are not an OpenAI approval or a guarantee of compliance or continued account access. Review the security model and limitations on this page, supervise tool use and stop workflows that receive a provider restriction or policy warning. Account enforcement questions belong with the provider's support or appeal process; keep private notices and account identifiers out of public reports.
+The user explicitly adds virtual roots and enables capabilities.
+
+### Filesystem boundary
+
+Filesystem actions resolve through approved virtual roots such as `/project`.
+
+`health` exposes virtual root names rather than host filesystem paths.
+
+Application path checks reduce accidental or model-directed access outside approved roots. They are not a kernel, VM or hostile-local-process sandbox.
+
+### Command authority
+
+`command` is intentionally separate from filesystem root confinement.
+
+When command capability is enabled, a shell command runs with the normal authority of the logged-in OS user. It may affect paths/resources outside approved chaOS roots. Do not enable it under the assumption that virtual roots sandbox arbitrary child processes.
+
+### Browser caller provenance
+
+Privileged actions require caller context generated by the extension from Chrome transport metadata. Model output cannot choose or overwrite this caller identity.
+
+The current provenance includes browser surface, tab/frame identity, Chrome document id and allowed ChatGPT host classification.
+
+Document identity is material: a reload/navigation produces a new browser document even when a tab id is reused.
+
+### Receipts and evidence
+
+Completed native calls can carry receipts containing request/action identity, browser caller context, native-host instance, timing and capability fingerprint.
+
+Successful `fs.write` and `fs.replace` receipts include post-action SHA-256 evidence for the resulting file.
+
+A receipt improves auditability; it does not turn the host into a cryptographically remote-attested execution environment. The host and extension run under the same user's local machine authority.
+
+### Idempotency
+
+Successful request ids are cached and bound to action + args + caller context for one native-host lifetime.
+
+Exact replay may return the original receipt. Reuse of the same successful id for another caller or request is rejected.
+
+This is not durable cross-restart deduplication.
+
+### Retained processes
+
+A numeric `process_id` is not sufficient authority by itself.
+
+`proc.run` records the starting browser document and returns a random `process_token` when the OS RNG is available.
+
+- The starting document may operate its process directly.
+- Another/later browser document must present the `process_token` to recover the retained handle.
+- Missing, incorrect or unknown ownership fails closed.
+- If token generation fails, cross-document recovery remains unavailable rather than falling back to a weak token.
+
+Treat a live `process_token` as a capability to operate that retained process for the lifetime of the native host.
+
+### Native Messaging boundary
+
+The primary transport is Chrome Native Messaging. The registered host accepts the configured chaOS extension origin.
+
+The current browser-native design does not require a localhost HTTP listener, MCP server, OpenAI Secure MCP Tunnel or `tunnel-client`.
+
+### Browser automatic mode
+
+Automatic bridge mode is explicit and per browser document. It uses a random nonce and a finite action budget. Reloading the page disables that automatic session.
+
+This limits accidental continuation; it is not a substitute for the native host's capability checks.
 
 ## Expected limitations
 
-These are properties of the current design, not vulnerability reports by themselves:
+These are current design properties, not vulnerability reports by themselves:
 
-- **Release binaries are not publisher-signed; macOS builds are also unnotarized.** Apple-silicon Mach-O files may still carry ad-hoc signatures, which do not identify a publisher or establish Gatekeeper trust. Windows SmartScreen, macOS Gatekeeper or browsers can warn. Verify release SHA-256 checksums before running them.
-- **The Linux AppImage has a sandbox-availability fallback.** Its electron-builder static launcher can add `--no-sandbox` when the host disables unprivileged user namespaces. On Debian/Ubuntu, prefer the DEB on such restrictive systems if you do not want the portable AppImage to take that fallback.
-- **Fresh installs start Core permissions enabled and read-only mode off.** Windows additionally enables Desktop permissions; Linux enables extension browser screen/control, and macOS retains its off default. Existing installs keep their explicit stored choices.
-- **Application path checks are not a kernel/VM sandbox.** They substantially constrain the app's filesystem tools, but same-user filesystem races can still exist. Do not treat approved roots as isolation from a hostile local process.
-- **Command and Windows Desktop capabilities are powerful by design.** If enabled, they can act wherever your logged-in user can act, subject to normal OS privilege boundaries.
-- **Session recording is intentionally detailed and is not encrypted by `safeStorage`.** Recorded conversations/tool activity stay local to this app, but anyone with access to your OS account may be able to read the session files.
+- The host runs as the logged-in OS user; it is not privilege-separated from that account.
+- Approved roots are application-enforced filesystem boundaries, not OS sandbox mounts.
+- Enabling command capability is powerful and can have system-wide effects within the user's normal permissions.
+- The extension necessarily interacts with ChatGPT's changing browser DOM for manual/automatic message transport.
+- The capability fingerprint identifies a local authority configuration; it is not a signed attestation from independent hardware or service.
+- Same-host idempotency does not survive native-host restart.
+- Retained-process recovery tokens exist in the browser/conversation flow when returned to ChatGPT; anyone able to read that value and reach the same native-host lifetime may possess that process capability.
+- This proof line has not yet completed all live second-refresh acceptance gates documented in `docs/CURRENT-ARCHITECTURE.md`.
 
 ## Scope
 
-In scope: this repository's desktop app, MCP surfaces, local browser bridge and `extension/` companion.
+In scope for current chaOS:
 
-Out of scope: ChatGPT/OpenAI infrastructure, Electron/Chromium upstream, `tunnel-client`, `cloudflared`, and other third-party dependencies. Report upstream vulnerabilities to the relevant project as well.
+- `native-host/`;
+- `extension-chaos/`;
+- Chrome Native Messaging registration/protocol;
+- virtual-root/capability enforcement;
+- receipt/provenance/idempotency logic;
+- retained-process ownership/recovery capabilities;
+- current browser-native verification scripts/workflows.
+
+Inherited Chat On Steroids Electron/MCP code remains in repository history/reference material but is not the current chaOS runtime unless explicitly adopted by `docs/CURRENT-ARCHITECTURE.md`.
+
+Out of scope: vulnerabilities in ChatGPT/OpenAI infrastructure, Chrome/Chromium, Go, Windows, or other third-party dependencies themselves. Report upstream vulnerabilities to the relevant project as well.

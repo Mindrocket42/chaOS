@@ -1,12 +1,15 @@
 name: Feature request
-description: Suggest a concrete improvement to Chat On Steroids.
+description: Suggest a concrete improvement to chaOS.
 labels: [enhancement]
 body:
   - type: markdown
     attributes:
       value: |
-        Please describe the workflow or limitation first. A new permanently exposed MCP
-        tool is intentionally a high bar; many workflows belong on the existing primitives.
+        Start with the workflow or failure mode, not a preferred mechanism.
+
+        chaOS deliberately keeps ChatGPT as the orchestrator and the local runtime small.
+        A new worker system, scheduler, durable conversation store, required MCP/tunnel path,
+        or second agent runtime is therefore a high architectural bar.
 
   - type: textarea
     id: problem
@@ -17,10 +20,27 @@ body:
       required: true
 
   - type: textarea
+    id: invariant
+    attributes:
+      label: Relevant invariant or boundary
+      description: Which current capability, provenance, receipt, idempotency, process-recovery or transport boundary is involved?
+      placeholder: "Example: retained process recovery after a browser reload"
+    validations:
+      required: true
+
+  - type: textarea
     id: proposal
     attributes:
-      label: Proposed change
-      description: Describe the smallest change that would solve the problem.
+      label: Smallest useful change
+      description: Describe the narrowest change that solves the problem without duplicating orchestration authority.
+    validations:
+      required: true
+
+  - type: textarea
+    id: evidence
+    attributes:
+      label: How would we know it works?
+      description: Describe the deterministic test, receipt or live proof that would verify the outcome.
     validations:
       required: true
 
@@ -28,4 +48,4 @@ body:
     id: alternatives
     attributes:
       label: Alternatives considered
-      description: Optional. Include workarounds or existing tools/workflows you tried.
+      description: Optional. Include existing chaOS primitives or simpler approaches you considered.
