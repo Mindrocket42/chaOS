@@ -14,12 +14,13 @@ The second refresh keeps the first-refresh rule intact:
 
 ## Scope accepted from current Chat On Steroids
 
-1. **Caller provenance** — local actions should carry transport-generated attribution rather than model-supplied identity.
-2. **Evidence-rich receipts** — successful mutations should return machine-verifiable facts, not only `ok: true`.
-3. **Fail-closed ambiguity** — when the bridge cannot establish the action's local caller context, mutating actions should not silently proceed.
-4. **Idempotency discipline** — duplicate action ids must not produce a second mutation inside one host lifetime.
-5. **Capability fingerprinting** — health should expose a stable fingerprint of the currently granted local execution surface so ChatGPT can detect permission/root changes.
-6. **Verification tests** — the above invariants belong in the native-host test suite.
+1. **Caller provenance** — local actions carry transport-generated attribution rather than model-supplied identity.
+2. **Evidence-rich receipts** — successful mutations return machine-verifiable facts, not only `ok: true`.
+3. **Fail-closed ambiguity** — when the bridge cannot establish local caller context, privileged actions do not silently proceed.
+4. **Capability-scoped retained handles** — a retained process id is not authority by itself.
+5. **Idempotency discipline** — duplicate action ids do not produce a second mutation inside one host lifetime.
+6. **Capability fingerprinting** — health exposes a stable fingerprint of the currently granted local execution surface.
+7. **Verification tests** — these invariants belong in the native-host suite.
 
 ## Explicit exclusions
 
@@ -74,19 +75,31 @@ Identity/replay violations also receive a receipt, so provenance does not disapp
 
 Successful `fs.write` and `fs.replace` calls produce receipt evidence containing the canonical virtual path, resulting byte count and resulting SHA-256 digest. The existing action result remains unchanged, so this is additive evidence rather than a new mutation API.
 
-### D. Mutating-call attribution gate
+### D. Privileged-call attribution gate
 
-The native host refuses `fs.write`, `fs.replace`, `proc.run`, `proc.write` and `proc.stop` unless the call is attributed to a specific Chrome document in a ChatGPT tab on an allowed ChatGPT host. Health/read/search remain usable for diagnostics without widening mutation authority.
+The native host refuses `fs.write`, `fs.replace`, `proc.run`, `proc.write` and `proc.stop` unless the call is attributed to a specific Chrome document in a ChatGPT tab on an allowed ChatGPT host. `proc.read` also requires attributed caller context because process output is part of the retained handle's authority surface. Health and ordinary filesystem reads/searches remain available according to their global local capability grants.
 
 The gate is transport policy, not conversation identity. chaOS still does not infer or persist ChatGPT conversation ownership.
 
-### E. Idempotency binding
+### E. Retained process ownership and recovery capability
+
+A numeric `process_id` is no longer sufficient authority to operate a retained process.
+
+- `proc.run` records the starting browser-document caller and mints a cryptographically random `process_token` when the OS RNG is available.
+- The starting document can `proc.read`, `proc.write` or `proc.stop` without resupplying that token.
+- A later/different ChatGPT browser document must provide the `process_token` returned by `proc.run`.
+- A wrong token is rejected with `PROCESS_CAPABILITY_MISMATCH`; a missing cross-document token is rejected with `PROCESS_CAPABILITY_REQUIRED`; an unowned id is rejected with `PROCESS_OWNER_UNKNOWN`.
+- If token generation fails, cross-document recovery stays closed rather than falling back to a weak token; same-document ownership still works.
+
+This avoids both bad outcomes: a globally guessable process handle and a process permanently stranded merely because ChatGPT reloaded.
+
+### F. Idempotency binding
 
 The existing successful-call cache binds a request id to action + args + caller document context. Replaying the same successful call returns the original response/receipt; reusing the id from another tab/document is rejected rather than borrowing the prior result.
 
 This guarantee is deliberately scoped to one native-host lifetime and is made explicit by the receipt's host-instance id. Durable cross-restart deduplication has not been added.
 
-### F. Capability fingerprint
+### G. Capability fingerprint
 
 The health response includes a SHA-256 capability fingerprint derived from host version, config version, approved roots and capability grants. The actual root paths are inputs to the digest but are not emitted by health.
 
@@ -102,7 +115,12 @@ Equivalent authority configurations produce the same fingerprint regardless of r
 - a nominal ChatGPT tab caller without Chrome document identity also fails closed;
 - write receipts include browser document identity, native-host lifetime, capability fingerprint and resulting SHA-256;
 - duplicate successful mutation ids return the original receipt and do not execute the mutation again;
-- a successful request id cannot be replayed from a different attributed browser caller.
+- a successful request id cannot be replayed from a different attributed browser caller;
+- a retained process is directly usable by its starting browser document;
+- another document is challenged for the process capability;
+- a wrong process capability fails closed;
+- the correct capability permits recovery from another document;
+- an unknown process owner fails closed.
 
 Existing tests still cover closed-by-default configuration, virtual-root path secrecy, path traversal rejection and Chrome Native Messaging framing.
 
@@ -111,7 +129,8 @@ Existing tests still cover closed-by-default configuration, virtual-root path se
 - First refresh already starts closed: no roots and all capabilities disabled.
 - Request ids already had an in-memory successful-call cache; second refresh strengthens its identity boundary rather than adding a scheduler or durable conversation store.
 - Caller attribution can be generated entirely in the extension background layer from Chrome transport metadata; there is no reason to put conversation ownership into the capability kernel.
-- Tab id is insufficient as provenance because tabs reload and are eventually reused; Chrome document identity is the useful local execution boundary.
+- Tab id is insufficient as provenance because tabs reload and are eventually reused; Chrome document identity is the useful immediate execution boundary.
+- Long-lived retained handles need a separate bearer capability if they must survive a browser-document boundary.
 - Evidence hashes belong in receipts, not in orchestration policy.
 - The first-refresh branch still carries its earlier merge blockers: the Linux verification failure recorded in `PR_2_FAILURE_REPORT.MD` and the missing real Chrome end-to-end proof. This refresh does not redefine those as solved.
 
@@ -127,4 +146,5 @@ Pending evidence before this branch can be treated as candidate truth:
 2. `node --check extension-chaos/background.js` against the branch checkout;
 3. the existing Windows Chrome-framing proof against this head;
 4. real Chrome end-to-end proof that a ChatGPT-tab mutation receipt contains browser document identity, native-host instance, capability fingerprint and file SHA-256;
-5. inherited first-refresh Linux verification blocker resolved or explicitly retired by replacing that inherited verification path.
+5. real retained-process proof across a page reload using the returned `process_token`;
+6. inherited first-refresh Linux verification blocker resolved or explicitly retired by replacing that inherited verification path.
