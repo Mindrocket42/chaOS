@@ -3,152 +3,210 @@
 Date: 2026-10-30
 Branch: `chaos-core-second-refresh`
 Baseline: `chaos-core-first-refresh` at `1fff35f829dde23e20d33f1028908a153510c88d`
+Canonical current contract: `docs/CURRENT-ARCHITECTURE.md`
 
 ## Objective
 
 Strengthen chaOS as an execution and evidence boundary without importing Chat On Steroids' product/runtime sprawl.
 
-The second refresh keeps the first-refresh rule intact:
-
 > ChatGPT decides. chaOS executes. Receipts prove what happened.
 
-## Scope accepted from current Chat On Steroids
+## Second-refresh mechanisms
 
-1. **Caller provenance** — local actions carry transport-generated attribution rather than model-supplied identity.
-2. **Evidence-rich receipts** — successful mutations return machine-verifiable facts, not only `ok: true`.
-3. **Fail-closed ambiguity** — when the bridge cannot establish local caller context, privileged actions do not silently proceed.
-4. **Capability-scoped retained handles** — a retained process id is not authority by itself.
-5. **Idempotency discipline** — duplicate action ids do not produce a second mutation inside one host lifetime.
-6. **Capability fingerprinting** — health exposes a stable fingerprint of the currently granted local execution surface.
-7. **Verification tests** — these invariants belong in the native-host suite.
+1. **Transport-generated caller provenance** — local privileged actions carry Chrome-derived caller context rather than model-supplied identity.
+2. **Browser-document identity** — tab id alone is not treated as durable provenance across reload/navigation.
+3. **Evidence-rich receipts** — completed calls identify the native-host lifetime, caller, action and authority surface; file mutations include post-action SHA-256 evidence.
+4. **Fail-closed privileged calls** — missing/ambiguous caller context does not silently mutate local state.
+5. **Caller-bound idempotency** — successful request ids cannot be reused across different args or caller contexts within one host lifetime.
+6. **Capability fingerprinting** — `health` exposes a stable digest of the local execution authority surface without exposing host root paths.
+7. **Retained-process capability recovery** — `process_id` is not authority by itself; cross-document recovery uses a random `process_token`.
+8. **Immediate disconnect failure** — outstanding bridge calls reject when the native-messaging port disconnects rather than waiting for ordinary timeout.
 
 ## Explicit exclusions
 
-Do not import:
+The second refresh does not import:
 
 - Goal / Loop;
 - worker chats or worker lifecycle;
 - automatic Continue / turn rotation;
-- ChatGPT tab scheduling or recovery;
-- conversation recording as execution state;
+- durable conversation recording as execution state;
+- ChatGPT tab scheduling/recovery machinery;
+- a local model router;
 - a local agent framework;
-- UI/product features unrelated to the capability kernel;
-- browser DOM state as the source of truth for local execution.
+- MCP or an OpenAI tunnel as a required transport;
+- Electron as a required runtime.
 
-## Implemented
+## Implementation detail
 
-### A. Transport-generated caller context
+### Caller context
 
-`extension-chaos/background.js` derives caller context from Chrome's `sender` object and forwards only that generated context to the native host. The model-facing action envelope still contains only action id, action name and args; model output cannot choose or overwrite native caller attribution.
+`extension-chaos/background.js` derives caller context from Chrome's `sender` metadata.
 
-Current context:
+Current context contains:
 
 - surface (`chatgpt-tab` or `extension-page`);
-- tab id when Chrome supplies one;
+- tab id;
 - frame id;
-- **Chrome document id**, so a reload/new document in the same tab is a different caller;
-- host classification (`chatgpt.com` / `chat.openai.com`), never the raw page URL.
+- Chrome document id;
+- allowed host classification (`chatgpt.com` / `chat.openai.com`).
 
-Mutating calls require the document id as well as the ChatGPT host classification. A tab id alone is not treated as durable caller identity.
+The model-facing action contains action id, action name and args; it cannot choose or overwrite native caller attribution.
 
-The extension also rejects outstanding bridge calls immediately if the native messaging port disconnects instead of leaving them to expire on the normal timeout.
+### Receipts
 
-### B. Native receipt envelope
-
-`native-host/evidence.go` and `native-host/main.go` attach receipt metadata to completed calls:
+`native-host/evidence.go` and `native-host/main.go` attach:
 
 - receipt schema version;
-- ephemeral **host-instance id**, identifying the native-host lifetime that executed the call;
-- action;
-- request id;
-- transport-generated caller context, including browser document id;
-- started/finished timestamps;
-- duration;
+- ephemeral native-host instance id;
+- action and request id;
+- caller context;
+- start/finish timestamps and duration;
 - capability fingerprint;
-- action-specific evidence where available.
+- action-specific evidence where applicable.
 
-`health` exposes the same host-instance id, receipt schema and capability fingerprint, allowing later receipts to be tied to the authority surface and host lifetime observed before execution.
+Identity/replay violations also receive receipts.
 
-Identity/replay violations also receive a receipt, so provenance does not disappear precisely when the caller boundary is rejected.
+### File mutation evidence
 
-### C. Mutation evidence
+Successful `fs.write` and `fs.replace` calls include:
 
-Successful `fs.write` and `fs.replace` calls produce receipt evidence containing the canonical virtual path, resulting byte count and resulting SHA-256 digest. The existing action result remains unchanged, so this is additive evidence rather than a new mutation API.
+- canonical virtual path;
+- resulting byte count;
+- resulting SHA-256 digest.
 
-### D. Privileged-call attribution gate
+### Retained process ownership
 
-The native host refuses `fs.write`, `fs.replace`, `proc.run`, `proc.write` and `proc.stop` unless the call is attributed to a specific Chrome document in a ChatGPT tab on an allowed ChatGPT host. `proc.read` also requires attributed caller context because process output is part of the retained handle's authority surface. Health and ordinary filesystem reads/searches remain available according to their global local capability grants.
+`proc.run` associates a retained process with the starting browser document and returns a random `process_token` when OS randomness is available.
 
-The gate is transport policy, not conversation identity. chaOS still does not infer or persist ChatGPT conversation ownership.
+- Starting document: may operate the process directly.
+- Different/later document: must present the token.
+- Missing token: `PROCESS_CAPABILITY_REQUIRED`.
+- Wrong token: `PROCESS_CAPABILITY_MISMATCH`.
+- Unknown owner: `PROCESS_OWNER_UNKNOWN`.
+- RNG failure: same-document ownership still works; cross-document recovery remains closed.
 
-### E. Retained process ownership and recovery capability
-
-A numeric `process_id` is no longer sufficient authority to operate a retained process.
-
-- `proc.run` records the starting browser-document caller and mints a cryptographically random `process_token` when the OS RNG is available.
-- The starting document can `proc.read`, `proc.write` or `proc.stop` without resupplying that token.
-- A later/different ChatGPT browser document must provide the `process_token` returned by `proc.run`.
-- A wrong token is rejected with `PROCESS_CAPABILITY_MISMATCH`; a missing cross-document token is rejected with `PROCESS_CAPABILITY_REQUIRED`; an unowned id is rejected with `PROCESS_OWNER_UNKNOWN`.
-- If token generation fails, cross-document recovery stays closed rather than falling back to a weak token; same-document ownership still works.
-
-This avoids both bad outcomes: a globally guessable process handle and a process permanently stranded merely because ChatGPT reloaded.
-
-### F. Idempotency binding
-
-The existing successful-call cache binds a request id to action + args + caller document context. Replaying the same successful call returns the original response/receipt; reusing the id from another tab/document is rejected rather than borrowing the prior result.
-
-This guarantee is deliberately scoped to one native-host lifetime and is made explicit by the receipt's host-instance id. Durable cross-restart deduplication has not been added.
-
-### G. Capability fingerprint
-
-The health response includes a SHA-256 capability fingerprint derived from host version, config version, approved roots and capability grants. The actual root paths are inputs to the digest but are not emitted by health.
-
-Equivalent authority configurations produce the same fingerprint regardless of root ordering.
+This prevents a guessable numeric process id from being a bearer credential while avoiding the opposite failure mode of stranding a live process after a page reload.
 
 ## Tests added
 
 `native-host/main_test.go` and `native-host/evidence_test.go` cover:
 
+- closed-by-default configuration;
+- virtual-root path secrecy;
+- path traversal rejection;
+- Chrome Native Messaging framing;
 - capability fingerprint changes when the authority surface changes;
-- equivalent authority surfaces produce the same fingerprint;
-- mutating calls without caller attribution fail closed and do not touch disk;
-- a nominal ChatGPT tab caller without Chrome document identity also fails closed;
-- write receipts include browser document identity, native-host lifetime, capability fingerprint and resulting SHA-256;
-- duplicate successful mutation ids return the original receipt and do not execute the mutation again;
-- a successful request id cannot be replayed from a different attributed browser caller;
-- a retained process is directly usable by its starting browser document;
-- another document is challenged for the process capability;
-- a wrong process capability fails closed;
-- the correct capability permits recovery from another document;
-- an unknown process owner fails closed.
+- equivalent authority configurations producing the same fingerprint;
+- unattributed mutation failure without disk side effects;
+- rejection of nominal ChatGPT caller context without document identity;
+- write receipt identity/fingerprint/SHA-256 evidence;
+- exact successful mutation replay without re-execution;
+- request-id rejection across caller boundaries;
+- starting-document retained-process ownership;
+- cross-document process capability challenge;
+- wrong process capability rejection;
+- valid process capability recovery;
+- unknown process-owner failure.
 
-Existing tests still cover closed-by-default configuration, virtual-root path secrecy, path traversal rejection and Chrome Native Messaging framing.
+## Housekeeping pass — 2026-10-30
+
+The second-refresh line was reconciled so repository metadata and automation describe the product that actually exists.
+
+### Canonical documentation
+
+Added `docs/CURRENT-ARCHITECTURE.md` and made it the current architecture contract.
+
+Updated:
+
+- `README.md` — current branch, setup, runtime, receipts, process tokens and verification status;
+- `AGENTS.md` — replaced the 452 KB inherited CoS agent/product map with concise current chaOS repository rules;
+- `CLAUDE.md` — current browser-native development rules;
+- `CONTRIBUTING.md` — chaOS contribution/test/evidence requirements;
+- `SECURITY.md` — current chaOS capability/provenance/process security model.
+
+The historical first-refresh `PR_2_FAILURE_REPORT.MD` was moved to `docs/history/PR-2-FIRST-REFRESH-FAILURE-REPORT.md` and explicitly marked historical.
+
+### Browser instructions
+
+Updated `extension-chaos/content.js` and `extension-chaos/popup.js` so manual/automatic instructions tell ChatGPT to preserve and use `process_token` after a browser-document boundary.
+
+### GitHub intake
+
+Updated:
+
+- `.github/pull_request_template.md`;
+- `.github/ISSUE_TEMPLATE/bug_report.yml`;
+- `.github/ISSUE_TEMPLATE/feature_request.yml`;
+- `.github/ISSUE_TEMPLATE/config.yml`.
+
+The security contact now points at `Mindrocket42/chaOS`, not upstream CoS.
+
+### CI and automation
+
+Replaced inherited CoS `ci.yml` with focused chaOS checks:
+
+- extension JS syntax checks;
+- `go test ./...`;
+- `go vet ./...`;
+- Linux Go build;
+- Windows Go tests/build;
+- Windows Chrome Native Messaging framing proof.
+
+Retargeted CodeQL to the current extension JavaScript.
+
+Dependabot now updates GitHub Actions only; it no longer maintains the inherited CoS npm dependency tree.
+
+Removed active inherited CoS automation for:
+
+- canary publishing;
+- release-note drafting;
+- Firefox signing;
+- app-version issue enforcement;
+- needs-info automation;
+- old PR checklist/fail-first logic;
+- PR auto-drafting/triage;
+- publish/release/release verification;
+- release checklist/targets;
+- similar-issue automation;
+- waiting-PR cleanup;
+- weekly digest;
+- welcome automation.
+
+The current workflow directory now contains only:
+
+```text
+.github/workflows/ci.yml
+.github/workflows/browser-native-proof.yml
+.github/workflows/codeql.yml
+```
 
 ## Working findings
 
-- First refresh already starts closed: no roots and all capabilities disabled.
-- Request ids already had an in-memory successful-call cache; second refresh strengthens its identity boundary rather than adding a scheduler or durable conversation store.
-- Caller attribution can be generated entirely in the extension background layer from Chrome transport metadata; there is no reason to put conversation ownership into the capability kernel.
-- Tab id is insufficient as provenance because tabs reload and are eventually reused; Chrome document identity is the useful immediate execution boundary.
-- Long-lived retained handles need a separate bearer capability if they must survive a browser-document boundary.
-- Evidence hashes belong in receipts, not in orchestration policy.
-- The first-refresh branch still carries its earlier merge blockers: the Linux verification failure recorded in `PR_2_FAILURE_REPORT.MD` and the missing real Chrome end-to-end proof. This refresh does not redefine those as solved.
+- The first refresh already established the correct minimal runtime direction: Chrome extension + Go native host, closed by default.
+- The second refresh strengthens authority and evidence rather than adding orchestration.
+- Browser document identity is the immediate caller boundary; long-lived process handles require a separate recovery capability.
+- Evidence belongs in receipts; orchestration policy does not substitute for post-action evidence.
+- Inherited CoS files may remain useful for archaeology/cribbing, but current root guidance and executable automation must not present them as the active product.
 
 ## Verification status
 
-Implementation is complete for the bounded second-refresh slice, subject to executable proof.
+### Verified
 
-Verified:
+- `extension-chaos/background.js` parsed cleanly under Node 22.16.0 during the second-refresh implementation work before the housekeeping pass.
+- The repository-level branch/PR structure exists and PR #4 targets `chaos-core-first-refresh`.
+- The active workflow directory has been reduced to the three chaOS workflows listed above.
 
-- `extension-chaos/background.js` parses cleanly with `node --check` under Node 22.16.0 using the final branch content.
-- PR #4 is mergeable against `chaos-core-first-refresh` at the repository level; it remains draft because executable acceptance evidence is incomplete.
+### Requires re-verification after housekeeping
 
-A temporary draft PR (#5) was opened against `main` solely to request the repository's default-branch pull-request workflows. GitHub exposed no workflow run for that PR/head during the verification attempt, so #5 was closed without claiming a CI pass. The actual review PR remains #4 against `chaos-core-first-refresh`.
+Because `content.js`, `popup.js`, CI configuration and documentation changed during housekeeping, the final second-refresh head still needs fresh executable evidence before promotion:
 
-Pending evidence before this branch can be treated as candidate truth:
+1. `node --check` against all three final extension JavaScript files;
+2. `go test ./...` against the final `native-host` head;
+3. `go vet ./...` and a current build;
+4. Windows Chrome Native Messaging framing proof against the final head;
+5. live Chrome mutation receipt showing document identity, native-host instance, capability fingerprint and file SHA-256;
+6. live retained-process recovery across page reload using `process_token`.
 
-1. `go test ./...` in `native-host` on CI or an environment holding the branch checkout;
-2. the existing Windows Chrome-framing proof against this head;
-3. real Chrome end-to-end proof that a ChatGPT-tab mutation receipt contains browser document identity, native-host instance, capability fingerprint and file SHA-256;
-4. real retained-process proof across a page reload using the returned `process_token`;
-5. inherited first-refresh Linux verification blocker resolved or explicitly retired by replacing that inherited verification path.
+The old first-refresh Linux CoS verification failure is no longer a current chaOS gate because the inherited CoS CI path was retired from this line. Its historical record remains under `docs/history/`.
+
+Do not promote the branch based on static review alone.
