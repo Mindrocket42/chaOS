@@ -138,13 +138,17 @@ Existing tests still cover closed-by-default configuration, virtual-root path se
 
 Implementation is complete for the bounded second-refresh slice, subject to executable proof.
 
+Verified:
+
+- `extension-chaos/background.js` parses cleanly with `node --check` under Node 22.16.0 using the final branch content.
+- PR #4 is mergeable against `chaos-core-first-refresh` at the repository level; it remains draft because executable acceptance evidence is incomplete.
+
 A temporary draft PR (#5) was opened against `main` solely to request the repository's default-branch pull-request workflows. GitHub exposed no workflow run for that PR/head during the verification attempt, so #5 was closed without claiming a CI pass. The actual review PR remains #4 against `chaos-core-first-refresh`.
 
 Pending evidence before this branch can be treated as candidate truth:
 
 1. `go test ./...` in `native-host` on CI or an environment holding the branch checkout;
-2. `node --check extension-chaos/background.js` against the branch checkout;
-3. the existing Windows Chrome-framing proof against this head;
-4. real Chrome end-to-end proof that a ChatGPT-tab mutation receipt contains browser document identity, native-host instance, capability fingerprint and file SHA-256;
-5. real retained-process proof across a page reload using the returned `process_token`;
-6. inherited first-refresh Linux verification blocker resolved or explicitly retired by replacing that inherited verification path.
+2. the existing Windows Chrome-framing proof against this head;
+3. real Chrome end-to-end proof that a ChatGPT-tab mutation receipt contains browser document identity, native-host instance, capability fingerprint and file SHA-256;
+4. real retained-process proof across a page reload using the returned `process_token`;
+5. inherited first-refresh Linux verification blocker resolved or explicitly retired by replacing that inherited verification path.
