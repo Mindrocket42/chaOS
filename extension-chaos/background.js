@@ -2,10 +2,18 @@ const HOST = 'pro.ironhead.chaos';
 let port = null;
 const pending = new Map();
 
+function rejectPending(error) {
+  for (const entry of pending.values()) {
+    clearTimeout(entry.timer);
+    entry.reject(error);
+  }
+  pending.clear();
+}
+
 function disconnect() {
   const held = port;
   port = null;
-  pending.clear();
+  rejectPending(new Error('chaOS native host disconnected'));
   if (held) {
     try { held.disconnect(); } catch { /* already gone */ }
   }
@@ -16,14 +24,16 @@ function getPort() {
   port = chrome.runtime.connectNative(HOST);
   const connectedPort = port;
   connectedPort.onMessage.addListener((message) => {
-    const waiter = message && typeof message.id === 'string' ? pending.get(message.id) : null;
-    if (!waiter) return;
+    const entry = message && typeof message.id === 'string' ? pending.get(message.id) : null;
+    if (!entry) return;
     pending.delete(message.id);
-    waiter(message);
+    clearTimeout(entry.timer);
+    entry.resolve(message);
   });
   connectedPort.onDisconnect.addListener(() => {
     if (port === connectedPort) port = null;
-    pending.clear();
+    const reason = chrome.runtime.lastError?.message || 'chaOS native host disconnected';
+    rejectPending(new Error(reason));
   });
   return connectedPort;
 }
@@ -34,10 +44,7 @@ function send(request) {
       pending.delete(request.id);
       reject(new Error('chaOS native host timeout'));
     }, 60000);
-    pending.set(request.id, (response) => {
-      clearTimeout(timer);
-      resolve(response);
-    });
+    pending.set(request.id, { resolve, reject, timer });
     try {
       getPort().postMessage(request);
     } catch (error) {
@@ -51,14 +58,15 @@ function send(request) {
 function callerFromSender(sender) {
   const frameId = Number.isInteger(sender?.frameId) ? sender.frameId : 0;
   const tabId = Number.isInteger(sender?.tab?.id) ? sender.tab.id : -1;
+  const documentId = typeof sender?.documentId === 'string' ? sender.documentId : '';
   const sourceUrl = sender?.tab?.url || sender?.url || '';
   let host = '';
   try { host = new URL(sourceUrl).host.toLowerCase(); } catch { /* leave blank */ }
 
-  if (tabId >= 0 && (host === 'chatgpt.com' || host === 'chat.openai.com')) {
-    return { surface: 'chatgpt-tab', tab_id: tabId, frame_id: frameId, host };
+  if (tabId >= 0 && documentId && (host === 'chatgpt.com' || host === 'chat.openai.com')) {
+    return { surface: 'chatgpt-tab', tab_id: tabId, frame_id: frameId, document_id: documentId, host };
   }
-  return { surface: 'extension-page', frame_id: frameId, host: chrome.runtime.id };
+  return { surface: 'extension-page', frame_id: frameId, document_id: documentId, host: chrome.runtime.id };
 }
 
 chrome.runtime.onMessage.addListener((message, sender, respond) => {
