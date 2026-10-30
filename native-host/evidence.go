@@ -3,6 +3,7 @@ package main
 import (
 	"crypto/rand"
 	"crypto/sha256"
+	"crypto/subtle"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
@@ -17,10 +18,15 @@ const receiptSchemaVersion = 1
 
 var hostInstanceID = newHostInstanceID()
 
+type processOwner struct {
+	Caller string
+	Token  string
+}
+
 var processOwners = struct {
 	sync.RWMutex
-	byID map[int64]string
-}{byID: map[int64]string{}}
+	byID map[int64]processOwner
+}{byID: map[int64]processOwner{}}
 
 type CallerContext struct {
 	Surface    string `json:"surface"`
@@ -51,6 +57,14 @@ func newHostInstanceID() string {
 	return fmt.Sprintf("fallback-%d-%d", os.Getpid(), time.Now().UnixNano())
 }
 
+func newProcessToken() string {
+	buf := make([]byte, 24)
+	if _, err := rand.Read(buf); err != nil {
+		return ""
+	}
+	return hex.EncodeToString(buf)
+}
+
 func isMutation(action string) bool {
 	switch action {
 	case "fs.write", "fs.replace", "proc.run", "proc.write", "proc.stop":
@@ -79,25 +93,16 @@ func callerSignature(caller *CallerContext) string {
 	return fmt.Sprintf("%s|%d|%d|%s|%s", caller.Surface, caller.TabID, caller.FrameID, caller.DocumentID, strings.ToLower(caller.Host))
 }
 
-func processAction(action string) bool {
-	switch action {
-	case "proc.run", "proc.read", "proc.write", "proc.stop":
-		return true
-	default:
-		return false
-	}
-}
-
-func processIDFromArgs(raw json.RawMessage) (int64, error) {
+func processIDFromArgs(raw json.RawMessage) (int64, map[string]any, error) {
 	args, err := objectArgs(raw)
 	if err != nil {
-		return 0, err
+		return 0, nil, err
 	}
 	id, err := intArg(args, "process_id", 0, 1, 1<<30)
 	if err != nil {
-		return 0, err
+		return 0, nil, err
 	}
-	return int64(id), nil
+	return int64(id), args, nil
 }
 
 func authorizeProcessCaller(action string, raw json.RawMessage, caller *CallerContext) error {
@@ -107,7 +112,7 @@ func authorizeProcessCaller(action string, raw json.RawMessage, caller *CallerCo
 	if !callerIsAttributed(caller) {
 		return failAction("CALLER_CONTEXT_REQUIRED", "process handles require transport-generated attribution to a ChatGPT browser document")
 	}
-	id, err := processIDFromArgs(raw)
+	id, args, err := processIDFromArgs(raw)
 	if err != nil {
 		return err
 	}
@@ -117,8 +122,15 @@ func authorizeProcessCaller(action string, raw json.RawMessage, caller *CallerCo
 	if !ok {
 		return failAction("PROCESS_OWNER_UNKNOWN", "process %d has no chaOS caller owner in this host lifetime", id)
 	}
-	if owner != callerSignature(caller) {
-		return failAction("PROCESS_OWNER_MISMATCH", "process %d belongs to another ChatGPT browser document", id)
+	if owner.Caller == callerSignature(caller) {
+		return nil
+	}
+	provided, _ := args["process_token"].(string)
+	if provided == "" || owner.Token == "" {
+		return failAction("PROCESS_CAPABILITY_REQUIRED", "process %d belongs to another browser document; provide the process_token returned by proc.run", id)
+	}
+	if len(provided) != len(owner.Token) || subtle.ConstantTimeCompare([]byte(provided), []byte(owner.Token)) != 1 {
+		return failAction("PROCESS_CAPABILITY_MISMATCH", "process %d capability did not match", id)
 	}
 	return nil
 }
@@ -143,9 +155,13 @@ func rememberProcessCaller(action string, result any, caller *CallerContext) {
 	if id <= 0 {
 		return
 	}
+	token := newProcessToken()
 	processOwners.Lock()
-	processOwners.byID[id] = callerSignature(caller)
+	processOwners.byID[id] = processOwner{Caller: callerSignature(caller), Token: token}
 	processOwners.Unlock()
+	if token != "" {
+		object["process_token"] = token
+	}
 }
 
 func capabilityFingerprint(cfg Config) string {
