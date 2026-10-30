@@ -9,12 +9,18 @@ import (
 	"os"
 	"sort"
 	"strings"
+	"sync"
 	"time"
 )
 
 const receiptSchemaVersion = 1
 
 var hostInstanceID = newHostInstanceID()
+
+var processOwners = struct {
+	sync.RWMutex
+	byID map[int64]string
+}{byID: map[int64]string{}}
 
 type CallerContext struct {
 	Surface    string `json:"surface"`
@@ -71,6 +77,75 @@ func callerSignature(caller *CallerContext) string {
 		return "none"
 	}
 	return fmt.Sprintf("%s|%d|%d|%s|%s", caller.Surface, caller.TabID, caller.FrameID, caller.DocumentID, strings.ToLower(caller.Host))
+}
+
+func processAction(action string) bool {
+	switch action {
+	case "proc.run", "proc.read", "proc.write", "proc.stop":
+		return true
+	default:
+		return false
+	}
+}
+
+func processIDFromArgs(raw json.RawMessage) (int64, error) {
+	args, err := objectArgs(raw)
+	if err != nil {
+		return 0, err
+	}
+	id, err := intArg(args, "process_id", 0, 1, 1<<30)
+	if err != nil {
+		return 0, err
+	}
+	return int64(id), nil
+}
+
+func authorizeProcessCaller(action string, raw json.RawMessage, caller *CallerContext) error {
+	if action != "proc.read" && action != "proc.write" && action != "proc.stop" {
+		return nil
+	}
+	if !callerIsAttributed(caller) {
+		return failAction("CALLER_CONTEXT_REQUIRED", "process handles require transport-generated attribution to a ChatGPT browser document")
+	}
+	id, err := processIDFromArgs(raw)
+	if err != nil {
+		return err
+	}
+	processOwners.RLock()
+	owner, ok := processOwners.byID[id]
+	processOwners.RUnlock()
+	if !ok {
+		return failAction("PROCESS_OWNER_UNKNOWN", "process %d has no chaOS caller owner in this host lifetime", id)
+	}
+	if owner != callerSignature(caller) {
+		return failAction("PROCESS_OWNER_MISMATCH", "process %d belongs to another ChatGPT browser document", id)
+	}
+	return nil
+}
+
+func rememberProcessCaller(action string, result any, caller *CallerContext) {
+	if action != "proc.run" || !callerIsAttributed(caller) {
+		return
+	}
+	object, ok := result.(map[string]any)
+	if !ok {
+		return
+	}
+	var id int64
+	switch value := object["process_id"].(type) {
+	case int64:
+		id = value
+	case int:
+		id = int64(value)
+	case float64:
+		id = int64(value)
+	}
+	if id <= 0 {
+		return
+	}
+	processOwners.Lock()
+	processOwners.byID[id] = callerSignature(caller)
+	processOwners.Unlock()
 }
 
 func capabilityFingerprint(cfg Config) string {
