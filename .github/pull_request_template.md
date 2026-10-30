@@ -1,40 +1,41 @@
-<!-- CI checks this description. A PR that fails "PR checklist" or CI is not reviewed. See CONTRIBUTING.md. -->
-
-<!-- Optional: "Fixes #123" when this closes an issue. No issue is needed otherwise. -->
-
 ## Why
 
-<!-- The root cause, or the user problem this solves. -->
+<!-- What authority boundary, failure mode or user problem does this solve? -->
 
 ## What changed
 
-<!-- The behavior change, in a few sentences. One topic per PR. -->
+<!-- Describe the behavior change and what was deliberately left unchanged. -->
 
-## Test
+## Verification
 
-<!-- Name the test you added or changed. The "Fail-first test" check runs it against main's code
-     and proves it fails there, so you don't have to.
-     If a test is truly impossible, write: No test: <reason>
-     If your tests only follow a refactor, write: Fail-first: n/a <reason> -->
+<!-- Separate evidence explicitly. Delete examples that do not apply. -->
 
-Release note: <!-- Optional: one sentence for users, used to draft the release notes. Write "none" for changes users never notice. Leave it out and the PR title is used. -->
+Verified:
+- <!-- exact command/live proof and result -->
+
+Static/inferred:
+- <!-- code inspection, syntax checks, reasoning only -->
+
+Pending:
+- <!-- runtime/live evidence still required, or "none" -->
+
+## Architecture impact
+
+<!-- Write "No architecture change" or describe the contract change and update docs/CURRENT-ARCHITECTURE.md. -->
 
 ## Live proof
 
-<!-- Required when the app or the extension behaves differently: show it working in the real app.
-     A screenshot, a short recording, or an excerpt of the app log in a code block.
-     Otherwise write: No behavior change: <reason> -->
-
-## Screenshots
-
-<!-- Required when the interface changes: before and after, with placeholder data. Otherwise delete this section. -->
+<!-- For browser/native runtime changes, include an exact receipt, focused log excerpt, screenshot or other direct evidence when practical. -->
 
 ## Checklist
 
-- [ ] `npm run verify` passes on my machine (OS: ).
-- [ ] For interface changes: `npm run verify:ui` passes.
-- [ ] The branch is up to date with `main`, and the PR contains nothing unrelated (no notes, logs or formatting-only changes).
-- [ ] Screenshots, logs and examples contain no real names, paths, chat text, IDs or credentials.
-- [ ] Every change serves the linked issue; nothing depends on ChatGPT's English wording.
-- [ ] Contract changes (preload, IPC, `src/shared`, recorded fields, extension messages) are described in AGENTS.md, or I wrote "No contract change: <reason>".
-- [ ] "Allow edits by maintainers" is on. If this builds on another PR, it says "Depends on #N" and is a draft.
+- [ ] I read `AGENTS.md` and `docs/CURRENT-ARCHITECTURE.md`.
+- [ ] `cd native-host && go test ./...` passes, or I explained why it was not applicable/available.
+- [ ] Changed extension JavaScript passes `node --check`.
+- [ ] I did not use `npm ci` / Electron / MCP as a substitute for the browser-native chaOS test path unless this PR explicitly targets inherited CoS code.
+- [ ] Permissions still start closed unless this PR explicitly changes that architecture.
+- [ ] Privileged caller identity still comes from transport metadata, not model text.
+- [ ] Mutation/completion claims are backed by receipts or explicit verification evidence.
+- [ ] `process_id` is not treated as a bearer credential; retained-process recovery preserves the `process_token` boundary.
+- [ ] README/current architecture were updated if setup, behavior, branch status or verification state changed.
+- [ ] Examples/logs contain no real credentials, private paths, private chat content or private identifiers.
