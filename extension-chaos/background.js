@@ -48,7 +48,20 @@ function send(request) {
   });
 }
 
-chrome.runtime.onMessage.addListener((message, _sender, respond) => {
+function callerFromSender(sender) {
+  const frameId = Number.isInteger(sender?.frameId) ? sender.frameId : 0;
+  const tabId = Number.isInteger(sender?.tab?.id) ? sender.tab.id : -1;
+  const sourceUrl = sender?.tab?.url || sender?.url || '';
+  let host = '';
+  try { host = new URL(sourceUrl).host.toLowerCase(); } catch { /* leave blank */ }
+
+  if (tabId >= 0 && (host === 'chatgpt.com' || host === 'chat.openai.com')) {
+    return { surface: 'chatgpt-tab', tab_id: tabId, frame_id: frameId, host };
+  }
+  return { surface: 'extension-page', frame_id: frameId, host: chrome.runtime.id };
+}
+
+chrome.runtime.onMessage.addListener((message, sender, respond) => {
   if (!message || typeof message !== 'object') return false;
   if (message.type === 'chaos-status') {
     const id = `status-${Date.now()}`;
@@ -65,7 +78,8 @@ chrome.runtime.onMessage.addListener((message, _sender, respond) => {
   }
   if (message.type === 'chaos-call' && message.call) {
     const call = message.call;
-    send({ type: 'call', id: call.id, action: call.action, args: call.args || {} }).then(
+    const caller = callerFromSender(sender);
+    send({ type: 'call', id: call.id, action: call.action, args: call.args || {}, caller }).then(
       respond,
       (error) => respond({ type: 'result', id: call.id, ok: false, protocol: 1, error: { code: 'NATIVE_HOST_UNAVAILABLE', message: String(error?.message || error) } })
     );
