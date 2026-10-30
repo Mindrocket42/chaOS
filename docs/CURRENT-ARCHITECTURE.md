@@ -38,10 +38,10 @@ For current chaOS behavior, use these files in this order:
 2. `AGENTS.md` — repository working rules for agents and contributors.
 3. `README.md` — setup, use and current verification status.
 4. `native-host/` — local capability kernel.
-5. `extension-chaos/` — Chrome transport and per-tab opt-in.
+5. `extension-chaos/` — Chrome transport and per-browser-document opt-in.
 6. `docs/CHAOS-SECOND-REFRESH-WORKING-STATE.md` — implementation/audit record for the second refresh.
 
-Older CoS documents, Electron sources, root npm metadata and historical workflows remain useful as provenance or upstream reference only where explicitly retained. They do not override the files above.
+Older CoS documents, Electron sources and root npm metadata remain provenance/upstream reference only unless explicitly adopted here. They do not override the files above.
 
 The synchronized CoS source is preserved on `upstream-sync-2026-10-16`; the pre-refresh chaOS line is preserved on `archive/chaos-core-first-2026-09-29`.
 
@@ -123,9 +123,9 @@ This makes long-lived process recovery possible without turning a guessable inte
 
 ChatGPT emits one `CHAOS_ACTION_BEGIN` / `CHAOS_ACTION_END` envelope. The extension shows **Run with chaOS**. The user runs it and copies the resulting receipt back to the conversation.
 
-### Automatic — explicit tab opt-in
+### Automatic — explicit browser-document opt-in
 
-The popup can enable the bridge for the current ChatGPT tab. The extension generates a random nonce, instructs ChatGPT to emit one matching action at a time, executes it, and returns the receipt as the next user message.
+The popup can enable the bridge for the current ChatGPT browser document. The extension generates a random nonce, instructs ChatGPT to emit one matching action at a time, executes it, and returns the receipt as the next user message.
 
 Automatic mode:
 
@@ -160,28 +160,40 @@ Browser-native source work requires Go 1.23+ and Node only for JavaScript syntax
 Primary checks:
 
 ```text
-cd native-host && go test ./...
+cd native-host && go test ./... && go vet ./...
 node --check extension-chaos/background.js
 node --check extension-chaos/content.js
 node --check extension-chaos/popup.js
 ```
 
-On Windows, `TEST-BROWSER-NATIVE.cmd` runs the Go tests, builds `chaos-host.exe`, registers the per-user Chrome Native Messaging host and shows the current local configuration.
+On Windows, `TEST-BROWSER-NATIVE.cmd` performs extension syntax checks when Node is present, runs Go tests/vet, builds `chaos-host.exe`, registers the per-user Chrome Native Messaging host, shows the closed-by-default configuration and prints the remaining live proof steps.
 
-The GitHub workflow `.github/workflows/browser-native-proof.yml` is the browser-native proof pipeline.
+Active GitHub workflows:
+
+```text
+.github/workflows/ci.yml
+.github/workflows/browser-native-proof.yml
+.github/workflows/codeql.yml
+```
 
 ## Current verification state
 
-Verified:
+Verified during the 2026-10-30 housekeeping run:
 
-- the first-refresh standalone native host/framing path previously passed its focused proof;
-- the current second-refresh `extension-chaos/background.js` parses under Node 22.16.0.
+- current `extension-chaos/background.js`, `content.js` and `popup.js` contents fetched from `chaos-core-second-refresh` all passed `node --check` under Node 22.16.0;
+- the active workflow directory contains only the three chaOS workflows listed above.
+
+Previously verified:
+
+- the first-refresh standalone native-host/framing path passed its focused proof.
 
 Still required before the second refresh is promoted from draft:
 
-1. `go test ./...` against the current second-refresh head;
+1. `go test ./...` and `go vet ./...` against the current second-refresh native host;
 2. Windows Chrome Native Messaging framing proof against the current head;
 3. live Chrome mutation receipt proving document identity, host instance, capability fingerprint and file SHA-256;
 4. retained-process recovery across a page reload using `process_token`.
+
+The connected execution container has Go 1.23.2 and Node 22.16.0 but cannot resolve github.com, so it cannot clone the branch for an exact Go run. GitHub Actions also exposed no current PR-head run through the connected API. Those receipts remain pending rather than inferred.
 
 Do not convert tests-written, static review, or historical first-refresh proof into a claim that the second-refresh runtime has passed these gates.
