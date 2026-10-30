@@ -24,13 +24,14 @@ TEST-BROWSER-NATIVE.cmd
 
 The script:
 
-1. checks that Go is available;
+1. checks extension JavaScript syntax when Node is available;
 2. runs `go test ./...` in `native-host`;
-3. builds `chaos-host.exe`;
-4. registers it as the current Windows user's Chrome Native Messaging host;
-5. prints the local chaOS configuration.
+3. runs `go vet ./...`;
+4. builds `chaos-host.exe`;
+5. registers it as the current Windows user's Chrome Native Messaging host;
+6. prints the local chaOS configuration and the remaining live Chrome checks.
 
-The source build requires **Go 1.23 or newer**. Browser-native chaOS does **not** require `npm ci`, `npm run dev`, Electron, or the inherited root npm dependency tree.
+The native source build requires **Go 1.23 or newer**. Node 22+ is recommended for the extension syntax proof. Browser-native chaOS does **not** require `npm ci`, `npm run dev`, Electron, or the inherited root npm dependency tree.
 
 After the script passes:
 
@@ -152,7 +153,7 @@ The token therefore preserves useful long-running process recovery without makin
 
 ChatGPT emits one `CHAOS_ACTION_BEGIN` / `CHAOS_ACTION_END` action. The extension shows **Run with chaOS** and exposes the real result for copying back to the conversation.
 
-### Automatic — explicit tab opt-in
+### Automatic — explicit browser-document opt-in
 
 Choose **Enable automatic bridge in this chat** from the extension popup.
 
@@ -205,14 +206,14 @@ upstream-sync-2026-10-16
 chaos-core-first-refresh
 ```
 
-The root `package.json`, Electron sources, old CoS docs and historical release machinery are upstream/reference material unless and until deliberately adopted into chaOS. Do not infer the current runtime from them.
+The root `package.json`, Electron sources, old CoS docs and historical package metadata are upstream/reference material unless and until deliberately adopted into chaOS. Do not infer the current runtime from them.
 
 ## Development checks
 
 Primary current checks:
 
 ```text
-cd native-host && go test ./...
+cd native-host && go test ./... && go vet ./...
 node --check extension-chaos/background.js
 node --check extension-chaos/content.js
 node --check extension-chaos/popup.js
@@ -224,23 +225,35 @@ Windows proof:
 TEST-BROWSER-NATIVE.cmd
 ```
 
-The focused GitHub workflow is `.github/workflows/browser-native-proof.yml`.
+The active GitHub workflows are:
+
+```text
+.github/workflows/ci.yml
+.github/workflows/browser-native-proof.yml
+.github/workflows/codeql.yml
+```
 
 ## Verification status
 
 This is still a proof line, not a release.
 
-Verified:
+Verified during the 2026-10-30 housekeeping run:
 
-- the first-refresh standalone native-host/framing path previously passed its focused proof;
-- the final second-refresh `extension-chaos/background.js` parsed under Node 22.16.0 during the refresh work.
+- the current `background.js`, `content.js` and `popup.js` contents were fetched from `chaos-core-second-refresh` and all three passed `node --check` under Node 22.16.0;
+- the active workflow directory was reduced to the three chaOS workflows listed above.
+
+Previously verified:
+
+- the first-refresh standalone native-host/framing path passed its focused proof.
 
 Still required before the second refresh should be promoted from draft:
 
-1. `go test ./...` against the current second-refresh head;
+1. `go test ./...` and `go vet ./...` against the current second-refresh native host;
 2. Windows Chrome Native Messaging framing proof against the current head;
 3. a live Chrome mutation receipt proving browser document identity, host instance, capability fingerprint and file SHA-256;
 4. retained-process recovery across a page reload using the returned `process_token`.
+
+The connected execution environment could not clone GitHub because outbound DNS to github.com is unavailable, and GitHub Actions emitted no run for the current PR head through the connected API. Those missing runtime receipts are therefore still listed rather than inferred.
 
 Do not treat tests-written, static review, or first-refresh proof as evidence that these second-refresh runtime gates have passed.
 
