@@ -1,6 +1,7 @@
 package main
 
 import (
+	"crypto/rand"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
@@ -13,23 +14,35 @@ import (
 
 const receiptSchemaVersion = 1
 
+var hostInstanceID = newHostInstanceID()
+
 type CallerContext struct {
-	Surface string `json:"surface"`
-	TabID   int    `json:"tab_id,omitempty"`
-	FrameID int    `json:"frame_id,omitempty"`
-	Host    string `json:"host,omitempty"`
+	Surface    string `json:"surface"`
+	TabID      int    `json:"tab_id,omitempty"`
+	FrameID    int    `json:"frame_id,omitempty"`
+	DocumentID string `json:"document_id,omitempty"`
+	Host       string `json:"host,omitempty"`
 }
 
 type Receipt struct {
-	Schema                int               `json:"schema"`
-	RequestID             string            `json:"request_id"`
-	Action                string            `json:"action"`
-	Caller                *CallerContext    `json:"caller,omitempty"`
-	StartedAt             string            `json:"started_at"`
-	FinishedAt            string            `json:"finished_at"`
-	DurationMS            int64             `json:"duration_ms"`
-	CapabilityFingerprint string            `json:"capability_fingerprint,omitempty"`
-	Evidence              map[string]any    `json:"evidence,omitempty"`
+	Schema                int            `json:"schema"`
+	HostInstance          string         `json:"host_instance"`
+	RequestID             string         `json:"request_id"`
+	Action                string         `json:"action"`
+	Caller                *CallerContext `json:"caller,omitempty"`
+	StartedAt             string         `json:"started_at"`
+	FinishedAt            string         `json:"finished_at"`
+	DurationMS            int64          `json:"duration_ms"`
+	CapabilityFingerprint string         `json:"capability_fingerprint,omitempty"`
+	Evidence              map[string]any `json:"evidence,omitempty"`
+}
+
+func newHostInstanceID() string {
+	buf := make([]byte, 16)
+	if _, err := rand.Read(buf); err == nil {
+		return hex.EncodeToString(buf)
+	}
+	return fmt.Sprintf("fallback-%d-%d", os.Getpid(), time.Now().UnixNano())
 }
 
 func isMutation(action string) bool {
@@ -42,7 +55,7 @@ func isMutation(action string) bool {
 }
 
 func callerIsAttributed(caller *CallerContext) bool {
-	if caller == nil || caller.Surface != "chatgpt-tab" || caller.TabID < 0 || caller.FrameID < 0 {
+	if caller == nil || caller.Surface != "chatgpt-tab" || caller.TabID < 0 || caller.FrameID < 0 || strings.TrimSpace(caller.DocumentID) == "" {
 		return false
 	}
 	switch strings.ToLower(strings.TrimSpace(caller.Host)) {
@@ -57,7 +70,7 @@ func callerSignature(caller *CallerContext) string {
 	if caller == nil {
 		return "none"
 	}
-	return fmt.Sprintf("%s|%d|%d|%s", caller.Surface, caller.TabID, caller.FrameID, strings.ToLower(caller.Host))
+	return fmt.Sprintf("%s|%d|%d|%s|%s", caller.Surface, caller.TabID, caller.FrameID, caller.DocumentID, strings.ToLower(caller.Host))
 }
 
 func capabilityFingerprint(cfg Config) string {
@@ -66,10 +79,10 @@ func capabilityFingerprint(cfg Config) string {
 		Path string `json:"path"`
 	}
 	type fingerprintPayload struct {
-		ConfigVersion int          `json:"config_version"`
-		HostVersion   string       `json:"host_version"`
+		ConfigVersion int               `json:"config_version"`
+		HostVersion   string            `json:"host_version"`
 		Roots         []fingerprintRoot `json:"roots"`
-		Capabilities  Capabilities `json:"capabilities"`
+		Capabilities  Capabilities      `json:"capabilities"`
 	}
 	roots := make([]fingerprintRoot, 0, len(cfg.Roots))
 	for _, root := range cfg.Roots {
@@ -91,9 +104,11 @@ func capabilityFingerprint(cfg Config) string {
 	return "sha256:" + hex.EncodeToString(sum[:])
 }
 
-func attachHealthFingerprint(result any, fingerprint string) any {
+func attachHealthMetadata(result any, fingerprint string) any {
 	if object, ok := result.(map[string]any); ok {
 		object["capability_fingerprint"] = fingerprint
+		object["host_instance"] = hostInstanceID
+		object["receipt_schema"] = receiptSchemaVersion
 	}
 	return result
 }
@@ -138,6 +153,7 @@ func buildReceipt(req request, caller *CallerContext, started time.Time, fingerp
 	}
 	return &Receipt{
 		Schema:                receiptSchemaVersion,
+		HostInstance:          hostInstanceID,
 		RequestID:             req.ID,
 		Action:                req.Action,
 		Caller:                caller,
