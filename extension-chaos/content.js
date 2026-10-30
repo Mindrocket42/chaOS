@@ -78,7 +78,7 @@ async function sendChatMessage(text) {
 }
 
 function bridgeInstructions(nonce) {
-  return `chaOS local bridge is enabled for this chat. This is a transport instruction, not a new task.\n\n` +
+  return `chaOS local bridge is enabled for this browser document. This is a transport instruction, not a new task.\n\n` +
     `When the current task needs local-machine I/O, output exactly one action and no surrounding prose:\n\n` +
     `${ACTION_BEGIN}\n` +
     `{"nonce":"${nonce}","id":"<unique-id>","action":"<action>","args":{}}\n` +
@@ -86,9 +86,10 @@ function bridgeInstructions(nonce) {
     `Then stop. The extension will execute that action and send back a ${RESULT_BEGIN}/${RESULT_END} receipt as the next user message. ` +
     `Continue from the receipt. Repeat only when another local action is genuinely required.\n\n` +
     `Available actions: health, fs.list, fs.read, fs.search, fs.write, fs.replace, proc.run, proc.read, proc.write, proc.stop. ` +
-    `Call health before the first local operation to learn the approved virtual roots and live permissions. ` +
+    `Call health before the first local operation to learn the approved virtual roots, capability fingerprint and live permissions. ` +
     `Prefer direct file/process actions over delegating to another harness. Never invent a receipt. Never claim an action succeeded before its receipt. ` +
-    `Never reuse a successful action id. When the task is complete, answer normally and emit no chaOS action.`;
+    `Never reuse a successful action id. For retained processes, preserve process_id and any process_token returned by proc.run; after a reload/new browser document, include the process_token in proc.read/proc.write/proc.stop args to recover that handle. Never invent or guess a process token. ` +
+    `When the task is complete, answer normally and emit no chaOS action.`;
 }
 
 function parseAction(text) {
@@ -180,7 +181,7 @@ async function scan() {
       if (action.nonce !== autoNonce) {
         if (!rendered.has(message)) {
           rendered.add(message);
-          addStatus(message, 'chaOS: action ignored — this chat does not hold the active bridge nonce');
+          addStatus(message, 'chaOS: action ignored — this browser document does not hold the active bridge nonce');
         }
         continue;
       }
