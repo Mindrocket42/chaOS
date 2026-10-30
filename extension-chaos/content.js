@@ -173,7 +173,12 @@ function addManualControl(message, action) {
 async function scan() {
   scanTimer = null;
   if (sending || isGenerating()) return;
-  const messages = [...document.querySelectorAll('[data-message-author-role="assistant"]')].slice(-16).reverse();
+  // ChatGPT's current DOM marks assistant markdown roots explicitly. Keep the
+  // role attribute selector for older ChatGPT layouts, and never scan user text.
+  const messages = [...new Set([
+    ...document.querySelectorAll('[data-message-author-role="assistant"]'),
+    ...document.querySelectorAll('[data-markdown-text-style="assistant-message"]')
+  ])].slice(-16).reverse();
   for (const message of messages) {
     const action = parseAction(message.innerText || message.textContent || '');
     if (!action || processed.has(action.id)) continue;
