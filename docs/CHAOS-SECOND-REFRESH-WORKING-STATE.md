@@ -119,6 +119,7 @@ Added `docs/CURRENT-ARCHITECTURE.md` and made it the current architecture contra
 Updated:
 
 - `README.md` — current branch, setup, runtime, receipts, process tokens and verification status;
+- `CHANGELOG.md` — chaOS history instead of inherited CoS 2.x release notes;
 - `AGENTS.md` — replaced the 452 KB inherited CoS agent/product map with concise current chaOS repository rules;
 - `CLAUDE.md` — current browser-native development rules;
 - `CONTRIBUTING.md` — chaOS contribution/test/evidence requirements;
@@ -126,9 +127,11 @@ Updated:
 
 The historical first-refresh `PR_2_FAILURE_REPORT.MD` was moved to `docs/history/PR-2-FIRST-REFRESH-FAILURE-REPORT.md` and explicitly marked historical.
 
-### Browser instructions
+### Browser instructions and Windows proof
 
 Updated `extension-chaos/content.js` and `extension-chaos/popup.js` so manual/automatic instructions tell ChatGPT to preserve and use `process_token` after a browser-document boundary.
+
+Updated `TEST-BROWSER-NATIVE.cmd` and `.github/workflows/browser-native-proof.yml` to cover extension syntax, Go tests/vet/build, framing and the second-refresh live receipt/process-token checks.
 
 ### GitHub intake
 
@@ -187,25 +190,26 @@ The current workflow directory now contains only:
 - Browser document identity is the immediate caller boundary; long-lived process handles require a separate recovery capability.
 - Evidence belongs in receipts; orchestration policy does not substitute for post-action evidence.
 - Inherited CoS files may remain useful for archaeology/cribbing, but current root guidance and executable automation must not present them as the active product.
+- The root CoS `package.json`, Electron source and third-party notices are deliberately retained as upstream/reference material. They are classified as such in current docs rather than partially rewritten into an inconsistent package tree.
 
 ## Verification status
 
 ### Verified
 
-- `extension-chaos/background.js` parsed cleanly under Node 22.16.0 during the second-refresh implementation work before the housekeeping pass.
+- The current `extension-chaos/background.js`, `content.js` and `popup.js` contents were fetched from `chaos-core-second-refresh` and all three passed `node --check` under Node 22.16.0 during this housekeeping run.
 - The repository-level branch/PR structure exists and PR #4 targets `chaos-core-first-refresh`.
-- The active workflow directory has been reduced to the three chaOS workflows listed above.
+- The active workflow directory contains only the three chaOS workflows listed above.
 
-### Requires re-verification after housekeeping
+### Pending executable evidence
 
-Because `content.js`, `popup.js`, CI configuration and documentation changed during housekeeping, the final second-refresh head still needs fresh executable evidence before promotion:
+The final second-refresh line still needs these runtime receipts before promotion:
 
-1. `node --check` against all three final extension JavaScript files;
-2. `go test ./...` against the final `native-host` head;
-3. `go vet ./...` and a current build;
-4. Windows Chrome Native Messaging framing proof against the final head;
-5. live Chrome mutation receipt showing document identity, native-host instance, capability fingerprint and file SHA-256;
-6. live retained-process recovery across page reload using `process_token`.
+1. `go test ./...` and `go vet ./...` against the current `native-host`;
+2. a current Go build and Windows Chrome Native Messaging framing proof;
+3. live Chrome mutation receipt showing document identity, native-host instance, capability fingerprint and file SHA-256;
+4. live retained-process recovery across page reload using `process_token`.
+
+The execution container has Go 1.23.2 and Node 22.16.0, but outbound DNS to github.com is unavailable, so it cannot clone the exact branch for the Go run. GitHub Actions also exposed no current PR-head run through the connected API. Those receipts remain pending rather than inferred.
 
 The old first-refresh Linux CoS verification failure is no longer a current chaOS gate because the inherited CoS CI path was retired from this line. Its historical record remains under `docs/history/`.
 
