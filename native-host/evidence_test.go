@@ -51,7 +51,7 @@ func TestMutationWithoutDocumentIdentityFailsClosed(t *testing.T) {
 	}
 }
 
-func TestRetainedProcessHandleIsBoundToStartingDocument(t *testing.T) {
+func TestRetainedProcessHandleUsesDocumentOwnershipAndRecoveryCapability(t *testing.T) {
 	firstCaller := attributedCaller()
 	secondCaller := &CallerContext{Surface: "chatgpt-tab", TabID: 8, FrameID: 0, DocumentID: "document-8", Host: "chatgpt.com"}
 	const processID int64 = 424242
@@ -59,16 +59,35 @@ func TestRetainedProcessHandleIsBoundToStartingDocument(t *testing.T) {
 	processOwners.Lock()
 	delete(processOwners.byID, processID)
 	processOwners.Unlock()
-	rememberProcessCaller("proc.run", map[string]any{"process_id": processID}, firstCaller)
-
-	raw := json.RawMessage(`{"process_id":424242}`)
-	if err := authorizeProcessCaller("proc.read", raw, firstCaller); err != nil {
-		t.Fatalf("owner could not read its process: %v", err)
+	result := map[string]any{"process_id": processID}
+	rememberProcessCaller("proc.run", result, firstCaller)
+	token, _ := result["process_token"].(string)
+	if token == "" {
+		t.Fatal("proc.run ownership did not mint a recovery capability")
 	}
-	err := authorizeProcessCaller("proc.read", raw, secondCaller)
+
+	ownerArgs, _ := json.Marshal(map[string]any{"process_id": processID})
+	if err := authorizeProcessCaller("proc.read", ownerArgs, firstCaller); err != nil {
+		t.Fatalf("starting document could not read its process: %v", err)
+	}
+
+	otherArgs, _ := json.Marshal(map[string]any{"process_id": processID})
+	err := authorizeProcessCaller("proc.read", otherArgs, secondCaller)
 	actionErr, ok := err.(*actionError)
-	if !ok || actionErr.Code != "PROCESS_OWNER_MISMATCH" {
-		t.Fatalf("other document was not rejected: %#v", err)
+	if !ok || actionErr.Code != "PROCESS_CAPABILITY_REQUIRED" {
+		t.Fatalf("other document was not challenged for capability: %#v", err)
+	}
+
+	wrongArgs, _ := json.Marshal(map[string]any{"process_id": processID, "process_token": "wrong"})
+	err = authorizeProcessCaller("proc.read", wrongArgs, secondCaller)
+	actionErr, ok = err.(*actionError)
+	if !ok || actionErr.Code != "PROCESS_CAPABILITY_MISMATCH" {
+		t.Fatalf("wrong process capability was not rejected: %#v", err)
+	}
+
+	recoveryArgs, _ := json.Marshal(map[string]any{"process_id": processID, "process_token": token})
+	if err := authorizeProcessCaller("proc.read", recoveryArgs, secondCaller); err != nil {
+		t.Fatalf("valid recovery capability was rejected: %v", err)
 	}
 }
 
@@ -78,7 +97,8 @@ func TestUnknownProcessOwnerFailsClosed(t *testing.T) {
 	delete(processOwners.byID, processID)
 	processOwners.Unlock()
 
-	err := authorizeProcessCaller("proc.read", json.RawMessage(`{"process_id":424243}`), attributedCaller())
+	raw, _ := json.Marshal(map[string]any{"process_id": processID})
+	err := authorizeProcessCaller("proc.read", raw, attributedCaller())
 	actionErr, ok := err.(*actionError)
 	if !ok || actionErr.Code != "PROCESS_OWNER_UNKNOWN" {
 		t.Fatalf("unknown process owner was not rejected: %#v", err)
