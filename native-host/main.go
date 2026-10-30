@@ -190,7 +190,11 @@ func handleRequest(body []byte) response {
 	signature := req.Action + "\x00" + string(req.Args) + "\x00" + callerSignature(req.Caller)
 	cacheMu.Lock(); previous, exists := callCache[req.ID]; cacheMu.Unlock()
 	if exists {
-		if previous.Signature != signature { return errorResponse(req.ID, "REQUEST_ID_REUSED", "this successful action id was already used for different arguments or caller context") }
+		if previous.Signature != signature {
+			resp := errorResponse(req.ID, "REQUEST_ID_REUSED", "this successful action id was already used for different arguments or caller context")
+			resp.Receipt = buildReceipt(req, req.Caller, started, fingerprint, nil)
+			return resp
+		}
 		return previous.Response
 	}
 
@@ -207,7 +211,7 @@ func handleRequest(body []byte) response {
 		return resp
 	}
 	if req.Action == "health" && fingerprint != "" {
-		result = attachHealthFingerprint(result, fingerprint)
+		result = attachHealthMetadata(result, fingerprint)
 	}
 	resp := successResponse(req.ID, result)
 	resp.Receipt = buildReceipt(req, req.Caller, started, fingerprint, mutationEvidence(req.Action, req.Args))
