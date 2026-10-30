@@ -186,6 +186,17 @@ func handleRequest(body []byte) response {
 		resp.Receipt = buildReceipt(req, req.Caller, started, fingerprint, nil)
 		return resp
 	}
+	if err := authorizeProcessCaller(req.Action, req.Args, req.Caller); err != nil {
+		var actionErr *actionError
+		if errors.As(err, &actionErr) {
+			resp := errorResponse(req.ID, actionErr.Code, actionErr.Error())
+			resp.Receipt = buildReceipt(req, req.Caller, started, fingerprint, nil)
+			return resp
+		}
+		resp := errorResponse(req.ID, "INTERNAL_ERROR", truncate(err.Error(), 2000))
+		resp.Receipt = buildReceipt(req, req.Caller, started, fingerprint, nil)
+		return resp
+	}
 
 	signature := req.Action + "\x00" + string(req.Args) + "\x00" + callerSignature(req.Caller)
 	cacheMu.Lock(); previous, exists := callCache[req.ID]; cacheMu.Unlock()
@@ -210,6 +221,7 @@ func handleRequest(body []byte) response {
 		resp.Receipt = buildReceipt(req, req.Caller, started, fingerprint, nil)
 		return resp
 	}
+	rememberProcessCaller(req.Action, result, req.Caller)
 	if req.Action == "health" && fingerprint != "" {
 		result = attachHealthMetadata(result, fingerprint)
 	}
