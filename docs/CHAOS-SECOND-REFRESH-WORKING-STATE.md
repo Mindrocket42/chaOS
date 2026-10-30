@@ -68,6 +68,8 @@ The extension also rejects outstanding bridge calls immediately if the native me
 
 `health` exposes the same host-instance id, receipt schema and capability fingerprint, allowing later receipts to be tied to the authority surface and host lifetime observed before execution.
 
+Identity/replay violations also receive a receipt, so provenance does not disappear precisely when the caller boundary is rejected.
+
 ### C. Mutation evidence
 
 Successful `fs.write` and `fs.replace` calls produce receipt evidence containing the canonical virtual path, resulting byte count and resulting SHA-256 digest. The existing action result remains unchanged, so this is additive evidence rather than a new mutation API.
@@ -117,10 +119,12 @@ Existing tests still cover closed-by-default configuration, virtual-root path se
 
 Implementation is complete for the bounded second-refresh slice, subject to executable proof.
 
+A temporary draft PR (#5) was opened against `main` solely to request the repository's default-branch pull-request workflows. GitHub exposed no workflow run for that PR/head during the verification attempt, so #5 was closed without claiming a CI pass. The actual review PR remains #4 against `chaos-core-first-refresh`.
+
 Pending evidence before this branch can be treated as candidate truth:
 
-1. `go test ./...` in `native-host` on CI or a local Go toolchain;
-2. `node --check extension-chaos/background.js`;
-3. the existing Windows Chrome-framing proof;
+1. `go test ./...` in `native-host` on CI or an environment holding the branch checkout;
+2. `node --check extension-chaos/background.js` against the branch checkout;
+3. the existing Windows Chrome-framing proof against this head;
 4. real Chrome end-to-end proof that a ChatGPT-tab mutation receipt contains browser document identity, native-host instance, capability fingerprint and file SHA-256;
 5. inherited first-refresh Linux verification blocker resolved or explicitly retired by replacing that inherited verification path.
