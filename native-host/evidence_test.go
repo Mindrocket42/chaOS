@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"testing"
@@ -26,6 +27,9 @@ func TestSuccessfulRequestIDIsBoundToCallerContext(t *testing.T) {
 	if second.OK || second.Error == nil || second.Error.Code != "REQUEST_ID_REUSED" {
 		t.Fatalf("request id crossed caller boundary: %#v", second)
 	}
+	if second.Receipt == nil || second.Receipt.Caller == nil || second.Receipt.Caller.DocumentID != "document-8" {
+		t.Fatalf("rejected replay omitted current caller receipt: %#v", second.Receipt)
+	}
 }
 
 func TestMutationWithoutDocumentIdentityFailsClosed(t *testing.T) {
@@ -44,6 +48,40 @@ func TestMutationWithoutDocumentIdentityFailsClosed(t *testing.T) {
 	}
 	if _, err := os.Stat(filepath.Join(approved, "test.txt")); !os.IsNotExist(err) {
 		t.Fatalf("refused mutation touched disk: %v", err)
+	}
+}
+
+func TestRetainedProcessHandleIsBoundToStartingDocument(t *testing.T) {
+	firstCaller := attributedCaller()
+	secondCaller := &CallerContext{Surface: "chatgpt-tab", TabID: 8, FrameID: 0, DocumentID: "document-8", Host: "chatgpt.com"}
+	const processID int64 = 424242
+
+	processOwners.Lock()
+	delete(processOwners.byID, processID)
+	processOwners.Unlock()
+	rememberProcessCaller("proc.run", map[string]any{"process_id": processID}, firstCaller)
+
+	raw := json.RawMessage(`{"process_id":424242}`)
+	if err := authorizeProcessCaller("proc.read", raw, firstCaller); err != nil {
+		t.Fatalf("owner could not read its process: %v", err)
+	}
+	err := authorizeProcessCaller("proc.read", raw, secondCaller)
+	actionErr, ok := err.(*actionError)
+	if !ok || actionErr.Code != "PROCESS_OWNER_MISMATCH" {
+		t.Fatalf("other document was not rejected: %#v", err)
+	}
+}
+
+func TestUnknownProcessOwnerFailsClosed(t *testing.T) {
+	const processID int64 = 424243
+	processOwners.Lock()
+	delete(processOwners.byID, processID)
+	processOwners.Unlock()
+
+	err := authorizeProcessCaller("proc.read", json.RawMessage(`{"process_id":424243}`), attributedCaller())
+	actionErr, ok := err.(*actionError)
+	if !ok || actionErr.Code != "PROCESS_OWNER_UNKNOWN" {
+		t.Fatalf("unknown process owner was not rejected: %#v", err)
 	}
 }
 
