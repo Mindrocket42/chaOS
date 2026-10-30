@@ -39,7 +39,7 @@ function runtime(markup) {
   return { dom, calls, listeners };
 }
 
-const envelope = nonce => `CHAOS_ACTION_BEGIN {"nonce":"${nonce}","id":"health-test-1","action":"health","args":{}} CHAOS_ACTION_END`;
+const envelope = (nonce, id = 'health-test-1') => `CHAOS_ACTION_BEGIN {"nonce":"${nonce}","id":"${id}","action":"health","args":{}} CHAOS_ACTION_END`;
 
 {
   const { dom, calls, listeners } = runtime('');
@@ -60,7 +60,7 @@ const envelope = nonce => `CHAOS_ACTION_BEGIN {"nonce":"${nonce}","id":"health-t
 
   const user = dom.window.document.createElement('div');
   user.setAttribute('data-user-message-bubble', 'true');
-  user.textContent = envelope('test-nonce');
+  user.textContent = envelope('test-nonce', 'health-user-must-not-run');
   dom.window.document.body.prepend(user);
   await delay(550);
   assert.equal(calls.length, 1, 'an action-shaped user message must not dispatch local actions');
