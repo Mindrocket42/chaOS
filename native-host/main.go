@@ -14,6 +14,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 )
 
 const (
@@ -32,6 +33,7 @@ type request struct {
 	ID     string          `json:"id"`
 	Action string          `json:"action,omitempty"`
 	Args   json.RawMessage `json:"args,omitempty"`
+	Caller *CallerContext  `json:"caller,omitempty"`
 }
 
 type response struct {
@@ -41,6 +43,7 @@ type response struct {
 	Protocol int            `json:"protocol"`
 	Result   any            `json:"result,omitempty"`
 	Error    *responseError `json:"error,omitempty"`
+	Receipt  *Receipt       `json:"receipt,omitempty"`
 }
 
 type responseError struct {
@@ -172,19 +175,42 @@ func handleRequest(body []byte) response {
 		return successResponse(req.ID, map[string]any{"app": "chaOS", "transport": "chrome-native-messaging", "protocol": protocolVersion, "version": hostVersion})
 	}
 	if req.Type != "call" || req.Action == "" || len(req.Action) > 128 { return errorResponse(req.ID, "BAD_REQUEST", "expected a call request with an action") }
-	signature := req.Action + "\x00" + string(req.Args)
+
+	started := time.Now().UTC()
+	fingerprint := ""
+	if cfg, err := loadConfig(); err == nil {
+		fingerprint = capabilityFingerprint(cfg)
+	}
+	if isMutation(req.Action) && !callerIsAttributed(req.Caller) {
+		resp := errorResponse(req.ID, "CALLER_CONTEXT_REQUIRED", "mutating actions require transport-generated attribution to a ChatGPT tab")
+		resp.Receipt = buildReceipt(req, req.Caller, started, fingerprint, nil)
+		return resp
+	}
+
+	signature := req.Action + "\x00" + string(req.Args) + "\x00" + callerSignature(req.Caller)
 	cacheMu.Lock(); previous, exists := callCache[req.ID]; cacheMu.Unlock()
 	if exists {
-		if previous.Signature != signature { return errorResponse(req.ID, "REQUEST_ID_REUSED", "this successful action id was already used for different arguments") }
+		if previous.Signature != signature { return errorResponse(req.ID, "REQUEST_ID_REUSED", "this successful action id was already used for different arguments or caller context") }
 		return previous.Response
 	}
+
 	result, err := runAction(req.Action, req.Args)
 	if err != nil {
 		var actionErr *actionError
-		if errors.As(err, &actionErr) { return errorResponse(req.ID, actionErr.Code, actionErr.Error()) }
-		return errorResponse(req.ID, "INTERNAL_ERROR", truncate(err.Error(), 2000))
+		var resp response
+		if errors.As(err, &actionErr) {
+			resp = errorResponse(req.ID, actionErr.Code, actionErr.Error())
+		} else {
+			resp = errorResponse(req.ID, "INTERNAL_ERROR", truncate(err.Error(), 2000))
+		}
+		resp.Receipt = buildReceipt(req, req.Caller, started, fingerprint, nil)
+		return resp
+	}
+	if req.Action == "health" && fingerprint != "" {
+		result = attachHealthFingerprint(result, fingerprint)
 	}
 	resp := successResponse(req.ID, result)
+	resp.Receipt = buildReceipt(req, req.Caller, started, fingerprint, mutationEvidence(req.Action, req.Args))
 	rememberCall(req.ID, signature, resp)
 	return resp
 }
