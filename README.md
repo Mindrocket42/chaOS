@@ -1,15 +1,19 @@
 # chaOS
 
-**ChatGPT decides. chaOS executes.**
+**ChatGPT decides. chaOS executes. Receipts prove what happened.**
 
-> **Testing `chaos-core-first-refresh` on Windows? Do not run `npm ci` or `npm run dev`.** Those commands belong to the inherited Chat On Steroids Electron application and are not the browser-native chaOS test path. Browser-native chaOS uses a standalone Go host plus the unpacked Chrome extension; Electron, MCP and the OpenAI Secure MCP Tunnel are not required.
+chaOS is a small browser-to-local execution bridge for ChatGPT. Its current path is a Chrome extension plus a standalone Go native host. It does **not** require Electron, MCP, an OpenAI Secure MCP Tunnel, worker chats, Goal/Loop, or a second orchestration runtime.
 
-## Test the browser-native build
+> Current development line: `chaos-core-second-refresh`
+>
+> Canonical architecture: [`docs/CURRENT-ARCHITECTURE.md`](docs/CURRENT-ARCHITECTURE.md)
 
-From an existing checkout, first make sure you are on the actual work branch:
+## Quick start — Windows browser-native build
+
+From an existing checkout:
 
 ```text
-git fetch origin && git switch chaos-core-first-refresh && git pull --ff-only origin chaos-core-first-refresh
+git fetch origin && git switch chaos-core-second-refresh && git pull --ff-only origin chaos-core-second-refresh
 ```
 
 Then run:
@@ -18,25 +22,36 @@ Then run:
 TEST-BROWSER-NATIVE.cmd
 ```
 
-That script:
+The script:
 
-1. verifies that Go is available;
-2. runs the standalone native-host tests;
+1. checks that Go is available;
+2. runs `go test ./...` in `native-host`;
 3. builds `chaos-host.exe`;
-4. registers it as the per-user Chrome Native Messaging host;
-5. prints the closed-by-default local configuration.
+4. registers it as the current Windows user's Chrome Native Messaging host;
+5. prints the local chaOS configuration.
 
-The source build currently requires **Go 1.23 or newer**. It does **not** require Electron or the root npm dependency tree.
+The source build requires **Go 1.23 or newer**. Browser-native chaOS does **not** require `npm ci`, `npm run dev`, Electron, or the inherited root npm dependency tree.
 
 After the script passes:
 
 1. open `chrome://extensions`;
 2. enable **Developer mode**;
 3. choose **Load unpacked**;
-4. select this repo's `extension-chaos` folder;
-5. open ChatGPT in Chrome and click **chaOS Local Bridge**.
+4. select this repository's `extension-chaos` folder;
+5. open ChatGPT in Chrome;
+6. open **chaOS Local Bridge**.
 
-Expected initial state: the native host is reachable, but there are **no approved roots and all local capabilities are off**. A basic health/transport check therefore does not grant file or command access.
+Fresh configuration starts closed:
+
+```text
+approved roots: none
+read:            off
+search:          off
+write:           off
+command:         off
+```
+
+A successful connection proves transport availability. It does **not** grant filesystem or command access.
 
 To remove the native-host registration:
 
@@ -44,46 +59,27 @@ To remove the native-host registration:
 chaos-host.exe --unregister
 ```
 
-If `npm run dev` opens Vite or fails looking for Electron, stop: **that is the inherited CoS desktop runtime, not the browser-native chaOS path being tested here.**
+If `npm run dev` starts Vite/Electron, stop. That is inherited Chat On Steroids code, not the current chaOS runtime.
 
----
-
-chaOS is a deliberately small local I/O bridge for ChatGPT. Its primary browser path does not use MCP, an OpenAI Secure MCP Tunnel, `tunnel-client`, a localhost HTTP server, worker chats, Goal/Loop or a second orchestration runtime.
+## Architecture
 
 ```text
 ChatGPT in Chrome
        |
-       | nonce-bound action / result envelopes
+       | explicit action envelope
        v
-chaOS extension
+extension-chaos
        |
        | Chrome Native Messaging
        v
 chaos-host.exe
        |
-       +-- approved files / search / writes
+       +-- approved virtual filesystem roots
        +-- retained local processes
-       +-- ordinary local programs and coding harnesses
+       +-- ordinary local programs / coding harnesses
 ```
 
-ChatGPT remains the orchestrator. The native host exposes deterministic capabilities and returns receipts.
-
-## Why this exists
-
-The project began as a fork of Chat On Steroids. Current CoS contains substantial useful engineering, but its normal operating model also grew around multiple MCP connectors/tunnels, ChatGPT browser automation, durable conversation recording, worker chats, Goal/Loop and other machinery.
-
-chaOS takes the opposite position:
-
-1. **Direct capability beats delegation.** Read a file directly; do not create a worker to read it.
-2. **Transport is replaceable.** MCP may exist as a compatibility adapter, but local capability does not depend on it.
-3. **The user must be able to answer "what is running?"** Browser-native mode is one extension plus one native host. No hidden tunnel process exists.
-4. **Access starts closed.** No roots or local capabilities are enabled by default.
-5. **ChatGPT orchestrates.** Parallel work is multiple process handles, not a local swarm implementation.
-6. **Durable work state belongs in the workspace.** Conversation recording is not the source of truth.
-
-## Current browser-native proof
-
-The Windows proof builds a standalone `chaos-host.exe` in Go. The host has no Electron or Node runtime dependency and has been tested using the same length-prefixed stdin/stdout framing used by Chrome Native Messaging.
+ChatGPT remains the orchestrator. The extension is transport glue. The Go host owns local capability enforcement and receipts.
 
 Supported actions:
 
@@ -100,48 +96,11 @@ proc.write
 proc.stop
 ```
 
-The file capabilities operate only through approved virtual roots such as `/project`. `health` exposes virtual root names, not host paths.
+### Filesystem boundary
 
-`command` is intentionally separate from the file boundary. When enabled, a shell command runs with the normal privileges of the logged-in OS account and is **not** represented as confined to approved roots.
+File actions operate through approved virtual roots such as `/project`. `health` exposes virtual root names, not host paths.
 
-## Browser orchestration
-
-The extension supports two modes.
-
-### Manual
-
-ChatGPT emits one `CHAOS_ACTION_BEGIN` action. The extension displays **Run with chaOS** beside it and exposes the resulting receipt for copying back to the conversation.
-
-### Automatic — explicit per-chat opt-in
-
-Open the extension popup in the ChatGPT tab and choose **Enable automatic bridge in this chat**.
-
-The extension then:
-
-1. generates a random nonce for that tab;
-2. sends ChatGPT the small action/result protocol;
-3. accepts only actions carrying that nonce;
-4. passes one action at a time to the native host;
-5. sends the real receipt back to the same conversation;
-6. stops naturally when ChatGPT answers without another action.
-
-The opt-in disappears on page reload. An automatic session is capped at 50 actions and must then be explicitly re-enabled.
-
-This browser code is transport glue. It is not allowed to become a worker scheduler, tab manager, model selector, recovery engine or agent framework.
-
-## Local permissions
-
-Fresh configuration:
-
-```text
-approved roots: none
-read:            off
-search:          off
-write:           off
-command:         off
-```
-
-The standalone host supports explicit local configuration:
+Local grants are explicit:
 
 ```text
 chaos-host.exe --status
@@ -153,39 +112,138 @@ chaos-host.exe --set-capability write on
 chaos-host.exe --set-capability command on
 ```
 
-Register/unregister the Chrome native host:
+`command` is intentionally separate from the virtual-root boundary. When enabled, a shell command runs with the logged-in OS user's normal authority and is **not** represented as confined to approved roots.
+
+## Provenance and receipts
+
+The second refresh strengthens the execution boundary without adding an agent framework.
+
+The extension derives caller provenance from Chrome transport metadata. Privileged calls are bound to a specific ChatGPT browser document rather than trusting model-supplied identity or a tab number alone.
+
+Native receipts can include:
+
+- receipt schema version;
+- native-host instance id;
+- request id and action;
+- browser caller context, including Chrome document id;
+- start/finish timestamps and duration;
+- capability fingerprint;
+- action-specific evidence.
+
+Successful `fs.write` and `fs.replace` receipts include the resulting virtual path, byte count and SHA-256 digest.
+
+Successful request ids are idempotent within one native-host lifetime: exact replay returns the original result; reuse with different args or caller context is rejected.
+
+## Retained processes
+
+A numeric `process_id` is not sufficient authority by itself.
+
+`proc.run` records the browser document that started the retained process and, when the OS RNG is available, returns a random `process_token`.
+
+- The starting document can read/write/stop its process directly.
+- After a reload or other browser-document boundary, a later ChatGPT document must supply the returned `process_token` to recover that process handle.
+- Missing, incorrect, or unknown ownership fails closed.
+
+The token therefore preserves useful long-running process recovery without making a guessable integer a bearer credential.
+
+## Browser modes
+
+### Manual
+
+ChatGPT emits one `CHAOS_ACTION_BEGIN` / `CHAOS_ACTION_END` action. The extension shows **Run with chaOS** and exposes the real result for copying back to the conversation.
+
+### Automatic — explicit tab opt-in
+
+Choose **Enable automatic bridge in this chat** from the extension popup.
+
+The extension then:
+
+1. creates a random nonce for that browser document;
+2. sends ChatGPT the action/result protocol;
+3. accepts only matching nonce-bound actions;
+4. executes one action at a time;
+5. returns the real receipt as the next user message;
+6. stops naturally when ChatGPT answers without another action.
+
+Automatic mode disappears on reload and is capped at 50 actions. It does not become a worker scheduler, tab manager, recovery engine, model selector, or local agent framework.
+
+A retained OS process may survive a reload; use its `process_token` for explicit recovery from the new document.
+
+## Why this exists
+
+chaOS began as a fork of Chat On Steroids (CoS). CoS contains substantial engineering, but its product/runtime grew around Electron, MCP connectors/tunnels, durable conversation recording, browser automation, workers, Goal/Loop and other orchestration machinery.
+
+chaOS takes a narrower position:
+
+1. **Direct capability beats delegation.** Read/write/run directly instead of spawning a local worker to do it.
+2. **Transport is replaceable.** Local authority must not depend on MCP or a tunnel.
+3. **Execution must be inspectable.** One browser extension plus one native host should explain what is running.
+4. **Access starts closed.** No approved roots or capabilities are silently granted.
+5. **ChatGPT orchestrates.** chaOS does not duplicate the model's planning/runtime layer locally.
+6. **Durable work state belongs in the workspace.** Conversation recording is not the execution source of truth.
+7. **Receipts beat assertions.** Local mutation claims should carry evidence that can be checked.
+
+## Current vs inherited repository content
+
+The repository still contains upstream CoS history and source for provenance and cribbing. That material is **not** the current chaOS operating contract unless explicitly referenced by the current architecture.
+
+Current authority:
 
 ```text
-chaos-host.exe --register
-chaos-host.exe --unregister
+docs/CURRENT-ARCHITECTURE.md
+AGENTS.md
+README.md
+native-host/
+extension-chaos/
 ```
 
-Registration is per-user on Windows and does not require an OpenAI connector or tunnel ID.
-
-## Repository history
-
-The previous chaOS fork state is preserved at:
+Historical/reference lines:
 
 ```text
 archive/chaos-core-first-2026-09-29
-```
-
-The synchronized current Chat On Steroids source is preserved at:
-
-```text
 upstream-sync-2026-10-16
-```
-
-The browser-native rewrite is being developed on:
-
-```text
 chaos-core-first-refresh
 ```
 
-See `docs/CHAOS-REFRESH-2026-10-16.md` for the architecture and acceptance tests.
+The root `package.json`, Electron sources, old CoS docs and historical release machinery are upstream/reference material unless and until deliberately adopted into chaOS. Do not infer the current runtime from them.
 
-## Status
+## Development checks
 
-This is still a proof branch, not a release. The standalone Windows host and native-message framing are verified in CI. The next acceptance gate is a live Chrome test on a real Windows machine: register the proof host, load the unpacked extension, enable a ChatGPT tab, and complete a `health -> local action -> receipt -> next action` loop.
+Primary current checks:
 
-MIT licensed. The upstream CoS history remains available in the repository branches noted above.
+```text
+cd native-host && go test ./...
+node --check extension-chaos/background.js
+node --check extension-chaos/content.js
+node --check extension-chaos/popup.js
+```
+
+Windows proof:
+
+```text
+TEST-BROWSER-NATIVE.cmd
+```
+
+The focused GitHub workflow is `.github/workflows/browser-native-proof.yml`.
+
+## Verification status
+
+This is still a proof line, not a release.
+
+Verified:
+
+- the first-refresh standalone native-host/framing path previously passed its focused proof;
+- the final second-refresh `extension-chaos/background.js` parsed under Node 22.16.0 during the refresh work.
+
+Still required before the second refresh should be promoted from draft:
+
+1. `go test ./...` against the current second-refresh head;
+2. Windows Chrome Native Messaging framing proof against the current head;
+3. a live Chrome mutation receipt proving browser document identity, host instance, capability fingerprint and file SHA-256;
+4. retained-process recovery across a page reload using the returned `process_token`.
+
+Do not treat tests-written, static review, or first-refresh proof as evidence that these second-refresh runtime gates have passed.
+
+See [`docs/CHAOS-SECOND-REFRESH-WORKING-STATE.md`](docs/CHAOS-SECOND-REFRESH-WORKING-STATE.md) for the implementation/audit record.
+
+MIT licensed.
