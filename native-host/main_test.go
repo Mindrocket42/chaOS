@@ -53,7 +53,7 @@ func callBody(t *testing.T, id, action string, args map[string]any, caller *Call
 }
 
 func attributedCaller() *CallerContext {
-	return &CallerContext{Surface: "chatgpt-tab", TabID: 7, FrameID: 0, Host: "chatgpt.com"}
+	return &CallerContext{Surface: "chatgpt-tab", TabID: 7, FrameID: 0, DocumentID: "document-7", Host: "chatgpt.com"}
 }
 
 func TestNativeMessagingPingUsesRawFrame(t *testing.T) {
@@ -108,6 +108,9 @@ func TestCapabilityFingerprintChangesWithAuthoritySurface(t *testing.T) {
 	if !ok { t.Fatalf("unexpected health result: %#v", first.Result) }
 	firstFingerprint, _ := firstResult["capability_fingerprint"].(string)
 	if firstFingerprint == "" { t.Fatal("health omitted capability fingerprint") }
+	if firstResult["host_instance"] != hostInstanceID || firstResult["receipt_schema"] != receiptSchemaVersion {
+		t.Fatalf("health omitted host receipt metadata: %#v", firstResult)
+	}
 
 	if err := setCapability("read", true); err != nil { t.Fatal(err) }
 	second := handleRequest(callBody(t, "health-b", "health", map[string]any{}, nil))
@@ -147,10 +150,10 @@ func TestWriteReceiptCarriesCallerAndContentDigest(t *testing.T) {
 	got := handleRequest(callBody(t, "write-receipt", "fs.write", map[string]any{"path": "/project/test.txt", "content": "alpha"}, caller))
 	if !got.OK { t.Fatalf("write failed: %#v", got) }
 	if got.Receipt == nil { t.Fatal("write omitted receipt") }
-	if got.Receipt.Schema != receiptSchemaVersion || got.Receipt.RequestID != "write-receipt" || got.Receipt.Action != "fs.write" {
+	if got.Receipt.Schema != receiptSchemaVersion || got.Receipt.HostInstance != hostInstanceID || got.Receipt.RequestID != "write-receipt" || got.Receipt.Action != "fs.write" {
 		t.Fatalf("bad receipt identity: %#v", got.Receipt)
 	}
-	if got.Receipt.Caller == nil || got.Receipt.Caller.TabID != caller.TabID || got.Receipt.Caller.Host != caller.Host {
+	if got.Receipt.Caller == nil || got.Receipt.Caller.TabID != caller.TabID || got.Receipt.Caller.DocumentID != caller.DocumentID || got.Receipt.Caller.Host != caller.Host {
 		t.Fatalf("receipt omitted transport caller: %#v", got.Receipt.Caller)
 	}
 	if got.Receipt.CapabilityFingerprint == "" { t.Fatal("receipt omitted capability fingerprint") }
