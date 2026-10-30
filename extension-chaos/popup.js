@@ -31,7 +31,9 @@ Available actions:
 - proc.write
 - proc.stop
 
-Call health first to learn the approved virtual roots and live permissions. Prefer direct file/process actions over delegating to another coding harness. Never invent a result and never repeat a successful mutation merely because a previous receipt was not understood.`;
+Call health first to learn the approved virtual roots, capability fingerprint and live permissions. Prefer direct file/process actions over delegating to another coding harness. Never invent a result and never repeat a successful mutation merely because a previous receipt was not understood.
+
+For retained processes: keep the process_id from proc.run. proc.run may also return a process_token. The starting browser document can use its process directly; after a reload/new browser document, include that process_token in proc.read/proc.write/proc.stop args to recover the retained handle. Never invent or guess a process token.`;
 
 function paintDisconnected(message = 'Native host is stopped for this extension session.') {
   state.textContent = 'Not connected';
@@ -108,7 +110,7 @@ enableChat.addEventListener('click', async () => {
     if (!result?.ok) throw new Error(result?.error || 'Could not enable this chat');
     chatState.textContent = `Automatic · ${result.remaining} actions left`;
     chatState.className = 'ok';
-    copyStatus.textContent = 'Automatic bridge enabled only for this tab. Reloading the page disables it.';
+    copyStatus.textContent = 'Automatic bridge enabled only for this browser document. Reloading the page disables it; retained processes can be recovered with their process_token.';
   } catch (error) {
     copyStatus.textContent = `Could not enable this chat: ${String(error?.message || error)}`;
   } finally {
@@ -121,7 +123,7 @@ disableChat.addEventListener('click', async () => {
     await chatMessage({ type: 'chaos-auto-disable' });
     chatState.textContent = 'Manual';
     chatState.className = '';
-    copyStatus.textContent = 'Automatic bridge disabled for this tab.';
+    copyStatus.textContent = 'Automatic bridge disabled for this browser document.';
   } catch (error) {
     copyStatus.textContent = `Could not disable this chat: ${String(error?.message || error)}`;
   } finally {
